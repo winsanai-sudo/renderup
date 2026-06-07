@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: math-graph-lab
+    runtime: static
+    buildCommand: "echo Static site ready"
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: sameorigin
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
