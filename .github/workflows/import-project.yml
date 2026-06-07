@@ -17,7 +17,7 @@ jobs:
         shell: bash
         run: |
           cat > /tmp/choblog-project.tar.gz.b64 <<'ARCHIVE'
-          H4sIAC76JGoC/+19a3cbx5FoPvNXjGE5B4gBEBgCJAWJ1EqyHStr2TqSnNx7ZK05BIbEmAMMMhiI
+          H4sIAHr6JGoC/+19a3cbx5FoPvNXjGE5B4gBEBgCJAWJ1EqyHStr2TqSnNx7ZK05BIbEmAMMMhiI
           ZBTukW06V2tpN/a1mNCOpMgbOX4c5YSxFS99VtkP9+cI4H+4VdWP6Z4ZPChLchwBiUWgn9XV1dVV
           1dXV+cn85D+dstZetK2a7f/gkXwK7NPvb6EwVQq/Y3qxYBbNHxhrP3gMn047sHzo/gdP5secNRqB
           07DnijOzhdnC9MFyOV+anZoul82JH4w///CfvN28kLfXrEbLtR9VH7iop6en+6//6dIPimWzWCzO
@@ -317,8 +317,8 @@ jobs:
           DxqmSyEa5H0E6jZydSDm8IWeFKqoGxuhMDOwQbL7BNRy5HSX9SaPCFhnEZ9EHyNosD5IJK+BilFl
           i4GNP+wo6quddFYStsfqhP65vAp2Ih2F0IJVFBmKSJovi2Ns1opy+EpjClXv7EOcZo3GomcjI1jb
           hQuo0oA49dBEioI2pZJgN8aXpcef8Wf8GX/Gn/Fn/Pm+fP4/Vx/luQBoAQA=
-ARCHIVE
-          base64 -d -i /tmp/choblog-project.tar.gz.b64 > /tmp/choblog-project.tar.gz
+          ARCHIVE
+          base64 -d /tmp/choblog-project.tar.gz.b64 > /tmp/choblog-project.tar.gz
           tar -xzf /tmp/choblog-project.tar.gz
           rm -f .github/workflows/import-project.yml
       - name: Commit imported files
