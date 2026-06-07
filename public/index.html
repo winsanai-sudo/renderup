@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>초블7기 미션</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-page="user">
+    <canvas id="fireworks" aria-hidden="true"></canvas>
+    <main class="app-shell">
+      <nav class="topbar">
+        <a class="brand" href="/">
+          <span class="brand-mark">초7</span>
+          <span>
+            <strong>초블7기</strong>
+            <small>Mission Control</small>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="ghost-link" href="/links.html">방문 링크</a>
+          <a class="ghost-link" href="/admin.html">마스터</a>
+        </div>
+      </nav>
+
+      <section id="loginView" class="login-grid">
+        <div class="login-copy">
+          <p class="eyebrow">초강스블로그 7기</p>
+          <h1>5주차 미션 체크인</h1>
+          <p class="lead">이름을 고르고 핸드폰 번호로 입장하세요.</p>
+          <div class="signal-strip" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <form id="loginForm" class="panel login-panel">
+          <div class="segmented" role="tablist" aria-label="그룹 선택">
+            <button type="button" class="segment active" data-group="junior">주니어</button>
+            <button type="button" class="segment" data-group="senior">시니어</button>
+          </div>
+
+          <label class="field">
+            <span>핸드폰 번호</span>
+            <input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel" placeholder="01012345678" required />
+          </label>
+
+          <div class="name-zone">
+            <div class="section-heading">
+              <h2 id="rosterTitle">주니어 명단</h2>
+              <span id="selectedNameBadge">이름 선택</span>
+            </div>
+            <div id="rosterList" class="roster-list" aria-label="이름 목록"></div>
+          </div>
+
+          <button class="primary-btn" type="submit">접속하기</button>
+          <p id="loginMessage" class="message" role="status"></p>
+        </form>
+      </section>
+
+      <section id="missionView" class="mission-view hidden">
+        <div class="section-heading hero-heading">
+          <div>
+            <p class="eyebrow" id="memberGroup"></p>
+            <h1 id="memberName">미션 보드</h1>
+          </div>
+          <button id="logoutBtn" class="ghost-btn" type="button">로그아웃</button>
+        </div>
+
+        <div class="week-band">
+          <div>
+            <span class="mini-label">제출 주차</span>
+            <strong id="weekStatusTitle">1주차</strong>
+          </div>
+          <div id="weekPicker" class="week-picker" aria-label="주차 선택"></div>
+        </div>
+
+        <div id="progressGrid" class="progress-grid"></div>
+
+        <div class="mission-grid">
+          <form id="mission1Form" class="panel mission-panel">
+            <div class="mission-title">
+              <span class="mission-number">01</span>
+              <div>
+                <h2>미션1</h2>
+                <p>일요일 00시~24시 글 작성</p>
+              </div>
+            </div>
+            <div class="notice-line">적당한 길이의 본문 글 + 그림8장이상 + 지도</div>
+            <label class="field">
+              <span>블로그 주소</span>
+              <input id="blogUrlInput" type="url" placeholder="https://blog.naver.com/..." />
+            </label>
+            <button id="mission1Button" class="primary-btn" type="submit">미션1 완료</button>
+          </form>
+
+          <form id="mission2Form" class="panel mission-panel">
+            <div class="mission-title">
+              <span class="mission-number">02</span>
+              <div>
+                <h2>미션2</h2>
+                <p>방문 액션 4종 체크</p>
+              </div>
+            </div>
+            <div class="check-list">
+              <label><input type="checkbox" name="stay" /> <span>체류1분이상</span></label>
+              <label><input type="checkbox" name="like" /> <span>좋아요</span></label>
+              <label><input type="checkbox" name="neighbor" /> <span>서이추</span></label>
+              <label><input type="checkbox" name="secretComment" /> <span>비밀댓글</span></label>
+            </div>
+            <button id="mission2Button" class="primary-btn" type="submit">미션2 완료</button>
+          </form>
+        </div>
+
+        <p id="missionMessage" class="message" role="status"></p>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,13 +1,20 @@
 services:
   - type: web
-    name: math-graph-lab
-    runtime: static
-    buildCommand: "echo Static site ready"
-    staticPublishPath: .
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: sameorigin
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+    name: choblog-7-mission
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /opt/render/project/src/data
+      - key: MASTER_CODE
+        sync: false
+    disk:
+      name: choblog-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

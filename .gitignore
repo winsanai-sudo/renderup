@@ -1,4 +1,10 @@
-tunnel-*.log
-*.err.log
+node_modules/
+npm-debug.log*
+
+data/*.json
+data/*.txt
+tools/
+
+.env
 .DS_Store
 Thumbs.db
