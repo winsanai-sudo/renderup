@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>고등학교 그래프 탐구 도구</title>
     <link rel="stylesheet" href="./styles.css" />
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+    <script defer src="./vendor/math.min.js"></script>
     <script defer src="./app.js"></script>
   </head>
   <body>
     <main class="app-shell">
       <section class="graph-zone" aria-label="그래프 탐구 영역">
         <header class="top-bar">
-          <div>
+          <div class="title-block">
             <p class="eyebrow">Graph Lab</p>
             <h1>함수 그래프 탐구</h1>
           </div>
@@ -24,6 +24,9 @@
             <button class="record-button" id="recordButton" type="button" aria-pressed="false" title="녹화 시작">
               <span class="record-dot" aria-hidden="true"></span>
               <span id="recordButtonText">녹화</span>
+            </button>
+            <button class="icon-button" id="saveImage" type="button" aria-label="그래프 이미지 저장" title="그래프 이미지 저장">
+              <span aria-hidden="true">▣</span>
             </button>
             <button class="icon-button" id="resetView" type="button" aria-label="보기 초기화" title="보기 초기화">
               <span aria-hidden="true">↺</span>
@@ -42,12 +45,46 @@
 
       <aside class="control-panel" aria-label="그래프 설정과 도구">
         <section class="expression-box">
-          <label for="expression">식</label>
+          <div class="section-title">
+            <label for="expression">f(x)</label>
+            <div class="view-switch" role="group" aria-label="그래프 조작 방식">
+              <button class="mini active" id="probeMode" type="button">점</button>
+              <button class="mini" id="panMode" type="button">이동</button>
+            </div>
+          </div>
           <div class="input-row">
             <input id="expression" value="a*x^2 + b*x + c" autocomplete="off" spellcheck="false" />
             <button id="applyExpression" type="button">적용</button>
           </div>
-          <p id="parseStatus" class="status-text">a*x^2 + b*x + c 형식으로 시작합니다.</p>
+          <p id="parseStatus" class="status-text">f(x) = a*x^2 + b*x + c</p>
+
+          <label class="check-row compact-check">
+            <input id="enableG" type="checkbox" />
+            <span>g(x) 함께 보기</span>
+          </label>
+          <div class="input-row secondary-expression">
+            <input id="expressionG" value="a*(x-b)^2 + c" autocomplete="off" spellcheck="false" />
+            <button id="applyExpressionG" type="button">적용</button>
+          </div>
+          <p id="parseStatusG" class="status-text muted-line">g(x)는 선택하면 표시됩니다.</p>
+        </section>
+
+        <section class="preset-box" aria-label="함수 프리셋">
+          <div class="section-title">
+            <strong>프리셋</strong>
+            <button id="shareLink" class="mini" type="button">공유</button>
+          </div>
+          <div class="preset-grid">
+            <button type="button" data-preset="quadratic">이차</button>
+            <button type="button" data-preset="vertex">꼭짓점</button>
+            <button type="button" data-preset="linear">일차</button>
+            <button type="button" data-preset="absolute">절댓값</button>
+            <button type="button" data-preset="cubic">삼차</button>
+            <button type="button" data-preset="rational">유리</button>
+            <button type="button" data-preset="trig">삼각</button>
+            <button type="button" data-preset="sqrt">루트</button>
+          </div>
+          <p id="shareStatus" class="status-text muted-line">현재 상태를 링크로 복사할 수 있습니다.</p>
         </section>
 
         <section class="slider-grid" aria-label="계수 슬라이더">
@@ -74,6 +111,37 @@
           </div>
         </section>
 
+        <section class="view-box" aria-label="좌표평면 보기 설정">
+          <div class="section-title">
+            <strong>보기</strong>
+            <div class="button-row">
+              <button class="mini" id="zoomOut" type="button">−</button>
+              <button class="mini" id="zoomIn" type="button">＋</button>
+            </div>
+          </div>
+          <div class="compact-row view-row">
+            <label for="gridStep">눈금</label>
+            <select id="gridStep">
+              <option value="auto">자동</option>
+              <option value="0.5">0.5</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="5">5</option>
+            </select>
+            <label for="graphColor">색</label>
+            <select id="graphColor">
+              <option value="#35a6ff">파랑</option>
+              <option value="#6ee7b7">초록</option>
+              <option value="#b892ff">보라</option>
+              <option value="#ff9f1c">주황</option>
+            </select>
+          </div>
+          <label class="check-row compact-check">
+            <input id="autoFit" type="checkbox" checked />
+            <span>그래프에 맞춰 자동 보기</span>
+          </label>
+        </section>
+
         <section class="info-grid" aria-label="함수 정보">
           <article>
             <span>꼭짓점</span>
@@ -95,13 +163,14 @@
 
         <section class="tools" aria-label="탐구 도구">
           <div class="tool-tabs" role="tablist" aria-label="도구 선택">
-            <button class="tab active" type="button" data-tool="basic">기본</button>
-            <button class="tab" type="button" data-tool="ratio">비율</button>
-            <button class="tab" type="button" data-tool="tangent">접선</button>
-            <button class="tab" type="button" data-tool="integral">적분</button>
+            <button class="tab active" type="button" role="tab" aria-selected="true" data-tool="basic">기본</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tool="ratio">비율</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tool="tangent">접선</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tool="intersections">교점</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-tool="integral">적분</button>
           </div>
 
-          <div class="tool-card active" id="tool-basic">
+          <div class="tool-card active" id="tool-basic" role="tabpanel">
             <label class="check-row">
               <input id="showRoots" type="checkbox" checked />
               <span>x절편 표시</span>
@@ -110,10 +179,14 @@
               <input id="showGuides" type="checkbox" checked />
               <span>평행 보조선 표시</span>
             </label>
-            <p class="tool-result" id="basicResult">그래프를 누르면 해당 점을 기준으로 보조선이 움직입니다.</p>
+            <label class="check-row">
+              <input id="showSpecials" type="checkbox" checked />
+              <span>특이점 표시</span>
+            </label>
+            <p class="tool-result" id="basicResult">f(1) = 1</p>
           </div>
 
-          <div class="tool-card" id="tool-ratio">
+          <div class="tool-card" id="tool-ratio" role="tabpanel">
             <div class="compact-row">
               <label for="x1Input">x₁</label>
               <input id="x1Input" type="number" step="0.1" value="-1" />
@@ -123,7 +196,7 @@
             <p class="tool-result" id="ratioResult">두 점의 변화량과 평균변화율을 계산합니다.</p>
           </div>
 
-          <div class="tool-card" id="tool-tangent">
+          <div class="tool-card" id="tool-tangent" role="tabpanel">
             <div class="compact-row">
               <label for="tangentX">접점 x</label>
               <input id="tangentX" type="number" step="0.1" value="0" />
@@ -132,13 +205,21 @@
             <p class="tool-result" id="tangentResult">접선의 방정식이 여기에 표시됩니다.</p>
           </div>
 
-          <div class="tool-card" id="tool-integral">
+          <div class="tool-card" id="tool-intersections" role="tabpanel">
+            <p class="tool-result" id="intersectionResult">g(x)를 켜면 두 그래프의 교점을 계산합니다.</p>
+          </div>
+
+          <div class="tool-card" id="tool-integral" role="tabpanel">
             <div class="compact-row">
               <label for="integralFrom">∫ from</label>
               <input id="integralFrom" type="number" step="0.1" value="-1" />
               <label for="integralTo">to</label>
               <input id="integralTo" type="number" step="0.1" value="1" />
             </div>
+            <label class="check-row">
+              <input id="showRiemann" type="checkbox" />
+              <span>리만합 직사각형</span>
+            </label>
             <p class="tool-result" id="integralResult">정적분 값을 근사 계산합니다.</p>
           </div>
         </section>
