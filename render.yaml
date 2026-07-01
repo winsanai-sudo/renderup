@@ -2,7 +2,7 @@ services:
   - type: web
     name: choblog-7-mission
     runtime: node
-    plan: starter
+    plan: free
     region: singapore
     buildCommand: npm install
     startCommand: npm start
@@ -11,10 +11,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATA_DIR
-        value: /opt/render/project/src/data
+        value: ./data
       - key: MASTER_CODE
         sync: false
-    disk:
-      name: choblog-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1

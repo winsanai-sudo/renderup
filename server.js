@@ -10,6 +10,8 @@ const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
+const EXAM_WEEK = "exam";
+const EXAM_MISSION = "examBlog";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -188,6 +190,10 @@ function isWeekComplete(db, memberId, week) {
   return Boolean(mission1 && mission2);
 }
 
+function isLateSubmission(item) {
+  return Number.isInteger(item.week) && item.submittedDuringWeek > item.week;
+}
+
 function safePublicSubmission(item) {
   return {
     id: item.id,
@@ -201,7 +207,7 @@ function safePublicSubmission(item) {
     checklist: item.checklist || {},
     submittedAt: item.submittedAt,
     submittedDuringWeek: item.submittedDuringWeek,
-    late: item.submittedDuringWeek > item.week
+    late: isLateSubmission(item)
   };
 }
 
@@ -307,8 +313,9 @@ async function handleApi(req, res, reqUrl) {
   if (req.method === "POST" && reqUrl.pathname === "/api/submit") {
     const body = await parseBody(req);
     const memberId = String(body.memberId || "");
-    const week = Number(body.week);
     const mission = String(body.mission || "");
+    const isExamBlog = mission === EXAM_MISSION;
+    const week = isExamBlog ? EXAM_WEEK : Number(body.week);
     const db = readDb();
     const member = db.members[memberId];
 
@@ -316,18 +323,20 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 401, { message: "로그인 후 다시 제출해주세요." });
       return;
     }
-    if (!Number.isInteger(week) || week < 1 || week > 5) {
+    if (!isExamBlog && (!Number.isInteger(week) || week < 1 || week > 5)) {
       sendJson(res, 400, { message: "제출할 주차를 선택해주세요." });
       return;
     }
-    if (!["mission1", "mission2"].includes(mission)) {
+    if (!["mission1", "mission2", EXAM_MISSION].includes(mission)) {
       sendJson(res, 400, { message: "미션을 선택해주세요." });
       return;
     }
 
     const id = makeSubmissionId(memberId, week, mission);
     if (db.submissions[id]) {
-      sendJson(res, 409, { message: `${week}주차 미션은 이미 제출 하였습니다` });
+      sendJson(res, 409, {
+        message: isExamBlog ? "시험기간 긴급 블로그글은 이미 제출 하였습니다" : `${week}주차 미션은 이미 제출 하였습니다`
+      });
       return;
     }
 
@@ -343,7 +352,7 @@ async function handleApi(req, res, reqUrl) {
       submittedDuringWeek: Number(db.settings.currentWeek || 1)
     };
 
-    if (mission === "mission1") {
+    if (mission === "mission1" || isExamBlog) {
       const url = normalizeUrl(body.url);
       if (!url) {
         sendJson(res, 400, { message: "블로그 주소를 입력해주세요." });
@@ -377,9 +386,9 @@ async function handleApi(req, res, reqUrl) {
     db.submissions[id] = item;
     saveDb(db);
     sendJson(res, 200, {
-      message: `${week}주차 미션 제출 완료`,
+      message: isExamBlog ? "시험기간 긴급 블로그글 제출 완료" : `${week}주차 미션 제출 완료`,
       submission: safePublicSubmission(item),
-      weekComplete: isWeekComplete(db, memberId, week),
+      weekComplete: isExamBlog ? false : isWeekComplete(db, memberId, week),
       submissions: getMemberSubmissions(db, memberId).map(safePublicSubmission)
     });
     return;
@@ -437,11 +446,19 @@ async function handleApi(req, res, reqUrl) {
 
   if (req.method === "GET" && reqUrl.pathname === "/api/links") {
     const db = readDb();
-    const week = Number(reqUrl.searchParams.get("week") || 0);
+    const weekParam = reqUrl.searchParams.get("week") || "0";
+    const week = Number(weekParam);
     const submissions = Object.values(db.submissions)
-      .filter((item) => item.mission === "mission1" && item.url)
-      .filter((item) => !week || item.week === week)
-      .sort((a, b) => a.week - b.week || a.name.localeCompare(b.name, "ko"))
+      .filter((item) => ["mission1", EXAM_MISSION].includes(item.mission) && item.url)
+      .filter((item) => {
+        if (weekParam === EXAM_WEEK) return item.mission === EXAM_MISSION;
+        return !week || item.week === week;
+      })
+      .sort((a, b) => {
+        const aWeek = a.week === EXAM_WEEK ? 99 : Number(a.week || 0);
+        const bWeek = b.week === EXAM_WEEK ? 99 : Number(b.week || 0);
+        return aWeek - bWeek || a.name.localeCompare(b.name, "ko");
+      })
       .map(safePublicSubmission);
     sendJson(res, 200, { settings: db.settings, submissions });
     return;

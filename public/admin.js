@@ -44,7 +44,21 @@ function groupLabel(group) {
 }
 
 function missionLabel(mission) {
-  return mission === "mission1" ? "미션1" : "미션2";
+  if (mission === "mission1") return "미션1";
+  if (mission === "mission2") return "미션2";
+  return "시험기간 긴급 블로그글";
+}
+
+function weekLabel(week) {
+  return week === "exam" ? "시험기간" : `${week}주차`;
+}
+
+function isLate(item) {
+  return Number.isInteger(item.week) && item.submittedDuringWeek > item.week;
+}
+
+function isBlogMission(item) {
+  return ["mission1", "examBlog"].includes(item.mission);
 }
 
 function memberSubmissions(memberId, week) {
@@ -55,7 +69,7 @@ function weekCell(memberId, week) {
   const items = memberSubmissions(memberId, week);
   const m1 = items.some((item) => item.mission === "mission1");
   const m2 = items.some((item) => item.mission === "mission2");
-  const late = items.some((item) => item.submittedDuringWeek > item.week);
+  const late = items.some(isLate);
   const cls = m1 && m2 ? "complete" : m1 || m2 ? "partial" : "";
   const label = m1 && m2 ? "성공" : m1 ? "M1" : m2 ? "M2" : "-";
   return `<span class="week-cell ${cls} ${late ? "late" : ""}">${label}${late ? " · 지각" : ""}</span>`;
@@ -69,15 +83,17 @@ function successCount(memberId) {
 }
 
 function renderKpis() {
-  const lateCount = state.submissions.filter((item) => item.submittedDuringWeek > item.week).length;
+  const lateCount = state.submissions.filter(isLate).length;
   const completeWeeks = state.members.reduce((sum, member) => sum + successCount(member.id), 0);
-  const mission1Count = state.submissions.filter((item) => item.mission === "mission1").length;
+  const blogLinkCount = state.submissions.filter(isBlogMission).length;
+  const examBlogCount = state.submissions.filter((item) => item.mission === "examBlog").length;
   $("#kpiGrid").innerHTML = [
     ["명단", `${state.members.length}명`],
     ["전체 제출", `${state.submissions.length}건`],
     ["성공 주차", `${completeWeeks}회`],
     ["빨간 표시", `${lateCount}건`],
-    ["블로그 링크", `${mission1Count}개`]
+    ["블로그 링크", `${blogLinkCount}개`],
+    ["긴급글", `${examBlogCount}개`]
   ]
     .map(([label, value]) => `<article class="kpi-card"><span>${label}</span><strong>${value}</strong></article>`)
     .join("");
@@ -111,15 +127,14 @@ function renderSubmissions() {
   $("#submissionsTable").innerHTML =
     state.submissions
       .map((item) => {
-        const late = item.submittedDuringWeek > item.week;
-        const content =
-          item.mission === "mission1"
-            ? `<a class="content-link" href="${item.url}" target="_blank" rel="noopener">${item.url}</a>`
-            : "체류1분이상 · 좋아요 · 서이추 · 비밀댓글";
+        const late = isLate(item);
+        const content = isBlogMission(item)
+          ? `<a class="content-link" href="${item.url}" target="_blank" rel="noopener">${item.url}</a>`
+          : "체류1분이상 · 좋아요 · 서이추 · 비밀댓글";
         return `
           <tr class="${late ? "late-row" : ""}">
             <td><span class="status-chip ${late ? "late" : "done"}">${late ? "빨간표시" : "정상"}</span></td>
-            <td>${item.week}주차</td>
+            <td>${weekLabel(item.week)}</td>
             <td>${missionLabel(item.mission)}</td>
             <td>${groupLabel(item.group)}</td>
             <td>${item.name}</td>
