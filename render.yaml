@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: choblog-7-mission
+    name: choblog-8-mission
     runtime: node
     plan: free
     region: singapore

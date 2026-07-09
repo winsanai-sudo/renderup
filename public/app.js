@@ -1,6 +1,20 @@
 const state = {
-  roster: { junior: [], senior: [] },
-  group: "junior",
+  roster: { weekly1: [], weekly2: [] },
+  groupSessions: {
+    weekly1: [1, 2, 3, 4, 5].map((week) => ({ week, label: `${week}주차` })),
+    weekly2: [
+      "1회차 · 일요일",
+      "2회차 · 수요일",
+      "3회차 · 일요일",
+      "4회차 · 수요일",
+      "5회차 · 일요일",
+      "6회차 · 수요일",
+      "7회차 · 일요일",
+      "8회차 · 수요일",
+      "9회차 · 일요일"
+    ].map((label, index) => ({ week: index + 1, label }))
+  },
+  group: "weekly1",
   selectedName: "",
   member: null,
   submissions: [],
@@ -21,7 +35,15 @@ const missionMessage = $("#missionMessage");
 const toast = $("#toast");
 
 function groupLabel(group) {
-  return group === "senior" ? "시니어" : "주니어";
+  return group === "weekly2" ? "주2회반" : "주1회반";
+}
+
+function sessionsFor(group) {
+  return state.groupSessions[group] || state.groupSessions.weekly1;
+}
+
+function sessionLabel(group, week) {
+  return sessionsFor(group).find((item) => item.week === week)?.label || `${week}회차`;
 }
 
 function missionLabel(mission) {
@@ -73,9 +95,10 @@ function renderRoster() {
 }
 
 function renderWeekPicker() {
-  $("#weekStatusTitle").textContent = `${state.selectedWeek}주차`;
-  $("#weekPicker").innerHTML = [1, 2, 3, 4, 5]
-    .map((week) => `<button type="button" class="week-btn ${week === state.selectedWeek ? "active" : ""}" data-week="${week}">${week}</button>`)
+  const sessions = sessionsFor(state.member?.group || state.group);
+  $("#weekStatusTitle").textContent = sessionLabel(state.member?.group || state.group, state.selectedWeek);
+  $("#weekPicker").innerHTML = sessions
+    .map((session) => `<button type="button" class="week-btn ${session.week === state.selectedWeek ? "active" : ""}" data-week="${session.week}">${session.week}</button>`)
     .join("");
 }
 
@@ -84,15 +107,16 @@ function submissionFor(week, mission) {
 }
 
 function renderProgress() {
-  const weeklyProgress = [1, 2, 3, 4, 5]
-    .map((week) => {
+  const weeklyProgress = sessionsFor(state.member.group)
+    .map((session) => {
+      const week = session.week;
       const m1 = submissionFor(week, "mission1");
       const m2 = submissionFor(week, "mission2");
       const complete = m1 && m2;
       const late = [m1, m2].some((item) => item && item.submittedDuringWeek > item.week);
       return `
         <article class="progress-card">
-          <strong>${week}주차</strong>
+          <strong>${session.label}</strong>
           <div class="mini-status">
             <span class="status-chip ${m1 ? "done" : "pending"}">M1 ${m1 ? "완료" : "대기"}</span>
             <span class="status-chip ${m2 ? "done" : "pending"}">M2 ${m2 ? "완료" : "대기"}</span>
@@ -143,7 +167,7 @@ function renderMissionForms() {
 
 function renderMissionView() {
   if (!state.member) return;
-  $("#memberGroup").textContent = `${groupLabel(state.member.group)} · 현재 운영 ${state.settings.currentWeek || 1}주차`;
+  $("#memberGroup").textContent = `${groupLabel(state.member.group)} · 현재 운영 ${sessionLabel(state.member.group, state.settings.currentWeek || 1)}`;
   $("#memberName").textContent = `${state.member.name} 미션 보드`;
   renderWeekPicker();
   renderProgress();
@@ -154,6 +178,8 @@ function enterMissionView(payload) {
   state.member = payload.member;
   state.submissions = payload.submissions || [];
   state.settings = payload.settings || state.settings;
+  const sessions = sessionsFor(state.member.group);
+  state.selectedWeek = sessions.some((item) => item.week === Number(state.settings.currentWeek)) ? Number(state.settings.currentWeek) : sessions[0].week;
   localStorage.setItem("choblog-member-id", state.member.id);
   loginView.classList.add("hidden");
   missionView.classList.remove("hidden");
@@ -164,6 +190,7 @@ function enterMissionView(payload) {
 async function loadRoster() {
   const data = await api("/api/roster");
   state.roster = data.roster;
+  state.groupSessions = data.groupSessions || state.groupSessions;
   state.settings = data.settings || state.settings;
   renderRoster();
 }
@@ -180,7 +207,7 @@ async function restoreLogin() {
 }
 
 function celebrate(week) {
-  showToast(`${week}주차 미션 성공!!`);
+  showToast(`${sessionLabel(state.member.group, week)} 미션 성공!!`);
   launchFireworks();
 }
 
@@ -206,7 +233,7 @@ async function submitMission(mission, payload) {
       error.status === 409
         ? isExamBlog
           ? "시험기간 긴급 블로그글은 이미 제출 하였습니다"
-          : `${state.selectedWeek}주차 미션은 이미 제출 하였습니다`
+          : `${sessionLabel(state.member.group, state.selectedWeek)} 미션은 이미 제출 하였습니다`
         : error.message;
     showMessage(missionMessage, text, "error");
     showToast(text);

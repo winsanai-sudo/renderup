@@ -456,7 +456,7 @@ select {
 
 .week-picker {
   display: grid;
-  grid-template-columns: repeat(5, minmax(48px, 70px));
+  grid-template-columns: repeat(auto-fit, minmax(48px, 70px));
   gap: 8px;
 }
 

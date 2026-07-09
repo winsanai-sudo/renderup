@@ -1,7 +1,7 @@
 {
-  "name": "choblog-7-mission",
+  "name": "choblog-8-mission",
   "version": "1.0.0",
-  "description": "초블7기 미션 제출 웹사이트",
+  "description": "초블8기 미션 제출 웹사이트",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

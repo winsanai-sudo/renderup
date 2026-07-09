@@ -4,6 +4,21 @@ const state = {
   members: [],
   submissions: []
 };
+const groupSessions = {
+  weekly1: [1, 2, 3, 4, 5].map((week) => ({ week, label: `${week}주차` })),
+  weekly2: [
+    "1회차 · 일요일",
+    "2회차 · 수요일",
+    "3회차 · 일요일",
+    "4회차 · 수요일",
+    "5회차 · 일요일",
+    "6회차 · 수요일",
+    "7회차 · 일요일",
+    "8회차 · 수요일",
+    "9회차 · 일요일"
+  ].map((label, index) => ({ week: index + 1, label }))
+};
+const allWeeks = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 const $ = (selector) => document.querySelector(selector);
 const toast = $("#toast");
@@ -40,7 +55,11 @@ function fmtDate(iso) {
 }
 
 function groupLabel(group) {
-  return group === "senior" ? "시니어" : "주니어";
+  return group === "weekly2" ? "주2회반" : "주1회반";
+}
+
+function sessionsFor(group) {
+  return groupSessions[group] || groupSessions.weekly1;
 }
 
 function missionLabel(mission) {
@@ -51,6 +70,11 @@ function missionLabel(mission) {
 
 function weekLabel(week) {
   return week === "exam" ? "시험기간" : `${week}주차`;
+}
+
+function submissionWeekLabel(item) {
+  if (item.week === "exam") return "시험기간";
+  return sessionsFor(item.group).find((session) => session.week === item.week)?.label || `${item.week}회차`;
 }
 
 function isLate(item) {
@@ -76,7 +100,9 @@ function weekCell(memberId, week) {
 }
 
 function successCount(memberId) {
-  return [1, 2, 3, 4, 5].filter((week) => {
+  const member = state.members.find((item) => item.id === memberId);
+  return sessionsFor(member?.group).filter((session) => {
+    const week = session.week;
     const items = memberSubmissions(memberId, week);
     return items.some((item) => item.mission === "mission1") && items.some((item) => item.mission === "mission2");
   }).length;
@@ -90,7 +116,7 @@ function renderKpis() {
   $("#kpiGrid").innerHTML = [
     ["명단", `${state.members.length}명`],
     ["전체 제출", `${state.submissions.length}건`],
-    ["성공 주차", `${completeWeeks}회`],
+    ["성공 회차", `${completeWeeks}회`],
     ["빨간 표시", `${lateCount}건`],
     ["블로그 링크", `${blogLinkCount}개`],
     ["긴급글", `${examBlogCount}개`]
@@ -105,21 +131,18 @@ function renderMembers() {
     state.members
       .map((member) => {
         const count = successCount(member.id);
+        const maxCount = sessionsFor(member.group).length;
         return `
           <tr>
             <td>${groupLabel(member.group)}</td>
             <td>${member.name}</td>
             <td>${member.phoneMasked || ""}</td>
-            <td><strong>${count}/5</strong></td>
-            <td>${weekCell(member.id, 1)}</td>
-            <td>${weekCell(member.id, 2)}</td>
-            <td>${weekCell(member.id, 3)}</td>
-            <td>${weekCell(member.id, 4)}</td>
-            <td>${weekCell(member.id, 5)}</td>
+            <td><strong>${count}/${maxCount}</strong></td>
+            ${allWeeks.map((week) => `<td>${sessionsFor(member.group).some((session) => session.week === week) ? weekCell(member.id, week) : "-"}</td>`).join("")}
           </tr>
         `;
       })
-      .join("") || `<tr><td colspan="9">아직 접속한 명단이 없습니다.</td></tr>`;
+      .join("") || `<tr><td colspan="13">아직 접속한 명단이 없습니다.</td></tr>`;
 }
 
 function renderSubmissions() {
@@ -134,12 +157,12 @@ function renderSubmissions() {
         return `
           <tr class="${late ? "late-row" : ""}">
             <td><span class="status-chip ${late ? "late" : "done"}">${late ? "빨간표시" : "정상"}</span></td>
-            <td>${weekLabel(item.week)}</td>
+            <td>${submissionWeekLabel(item)}</td>
             <td>${missionLabel(item.mission)}</td>
             <td>${groupLabel(item.group)}</td>
             <td>${item.name}</td>
             <td>${fmtDate(item.submittedAt)}</td>
-            <td>${item.submittedDuringWeek}주차</td>
+            <td>${item.submittedDuringWeek}회차</td>
             <td>${content}</td>
           </tr>
         `;
@@ -185,7 +208,7 @@ $("#saveWeekBtn").addEventListener("click", async () => {
     });
     state.settings = data.settings;
     render();
-    showToast(`${currentWeek}주차로 저장했습니다.`);
+    showToast(`${currentWeek}회차로 저장했습니다.`);
   } catch (error) {
     showToast(error.message);
   }

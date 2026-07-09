@@ -12,6 +12,30 @@ const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 const EXAM_WEEK = "exam";
 const EXAM_MISSION = "examBlog";
+const GROUP_LABELS = {
+  weekly1: "주1회반",
+  weekly2: "주2회반"
+};
+const GROUP_SESSIONS = {
+  weekly1: [
+    { week: 1, label: "1주차" },
+    { week: 2, label: "2주차" },
+    { week: 3, label: "3주차" },
+    { week: 4, label: "4주차" },
+    { week: 5, label: "5주차" }
+  ],
+  weekly2: [
+    { week: 1, label: "1회차 · 일요일" },
+    { week: 2, label: "2회차 · 수요일" },
+    { week: 3, label: "3회차 · 일요일" },
+    { week: 4, label: "4회차 · 수요일" },
+    { week: 5, label: "5회차 · 일요일" },
+    { week: 6, label: "6회차 · 수요일" },
+    { week: 7, label: "7회차 · 일요일" },
+    { week: 8, label: "8회차 · 수요일" },
+    { week: 9, label: "9회차 · 일요일" }
+  ]
+};
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -26,49 +50,45 @@ const MIME = {
 };
 
 const ROSTER = {
-  junior: [
-    "피타고라스",
-    "유클리드",
-    "아르키메데스",
-    "탈레스",
-    "히파티아",
-    "알콰리즈미",
-    "피보나치",
-    "데카르트",
-    "파스칼",
-    "페르마",
-    "뉴턴",
-    "라이프니츠",
-    "오일러",
-    "라그랑주",
-    "라플라스",
-    "푸리에",
-    "가우스",
-    "소피 제르맹",
-    "코시",
-    "에이다 러브레이스"
+  weekly1: [
+    "강현선",
+    "김영유",
+    "나은영",
+    "남식훈",
+    "문재웅",
+    "배장윤",
+    "박윤정",
+    "백화샘",
+    "설지샘",
+    "세준샘",
+    "수학맘",
+    "안은주",
+    "유재원",
+    "이동휘",
+    "이민호",
+    "이종민",
+    "임예희",
+    "장세완",
+    "정영운",
+    "추재원",
+    "황해룡",
+    "정혜원",
+    "소매샘",
+    "승빈샘",
+    "룡수학"
   ],
-  senior: [
-    "리만",
-    "칸토어",
-    "푸앵카레",
-    "힐베르트",
-    "에미 뇌터",
-    "라마누잔",
-    "괴델",
-    "튜링",
-    "폰 노이만",
-    "콜모고로프",
-    "존 내시",
-    "그로텐디크",
-    "만델브로트",
-    "앙드레 베유",
-    "장피에르 세르",
-    "줄리아 로빈슨",
-    "마이클 아티야",
-    "메리엄 미르자카니",
-    "테렌스 타오",
-    "세드릭 빌라니"
+  weekly2: [
+    "김민호",
+    "김보미",
+    "김원표",
+    "모리샘",
+    "민하샘",
+    "아영샘",
+    "신선미",
+    "이기호",
+    "김유진",
+    "한문수",
+    "류용수"
   ]
 };
 
@@ -190,6 +210,10 @@ function isWeekComplete(db, memberId, week) {
   return Boolean(mission1 && mission2);
 }
 
+function sessionLabel(group, week) {
+  return GROUP_SESSIONS[group]?.find((item) => item.week === week)?.label || `${week}회차`;
+}
+
 function isLateSubmission(item) {
   return Number.isInteger(item.week) && item.submittedDuringWeek > item.week;
 }
@@ -249,7 +273,7 @@ async function handleApi(req, res, reqUrl) {
 
   if (req.method === "GET" && reqUrl.pathname === "/api/roster") {
     const db = readDb();
-    sendJson(res, 200, { roster: ROSTER, settings: db.settings });
+    sendJson(res, 200, { roster: ROSTER, groupLabels: GROUP_LABELS, groupSessions: GROUP_SESSIONS, settings: db.settings });
     return;
   }
 
@@ -259,8 +283,8 @@ async function handleApi(req, res, reqUrl) {
     const name = String(body.name || "").trim();
     const phone = normalizePhone(body.phone);
 
-    if (!["junior", "senior"].includes(group)) {
-      sendJson(res, 400, { message: "주니어 또는 시니어를 선택해주세요." });
+    if (!Object.keys(ROSTER).includes(group)) {
+      sendJson(res, 400, { message: "주1회반 또는 주2회반을 선택해주세요." });
       return;
     }
     if (!ROSTER[group].includes(name)) {
@@ -323,8 +347,9 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 401, { message: "로그인 후 다시 제출해주세요." });
       return;
     }
-    if (!isExamBlog && (!Number.isInteger(week) || week < 1 || week > 5)) {
-      sendJson(res, 400, { message: "제출할 주차를 선택해주세요." });
+    const maxWeek = GROUP_SESSIONS[member.group]?.length || 5;
+    if (!isExamBlog && (!Number.isInteger(week) || week < 1 || week > maxWeek)) {
+      sendJson(res, 400, { message: `제출할 회차를 선택해주세요. ${GROUP_LABELS[member.group]}은 ${maxWeek}회까지 제출할 수 있습니다.` });
       return;
     }
     if (!["mission1", "mission2", EXAM_MISSION].includes(mission)) {
@@ -335,7 +360,7 @@ async function handleApi(req, res, reqUrl) {
     const id = makeSubmissionId(memberId, week, mission);
     if (db.submissions[id]) {
       sendJson(res, 409, {
-        message: isExamBlog ? "시험기간 긴급 블로그글은 이미 제출 하였습니다" : `${week}주차 미션은 이미 제출 하였습니다`
+        message: isExamBlog ? "시험기간 긴급 블로그글은 이미 제출 하였습니다" : `${sessionLabel(member.group, week)} 미션은 이미 제출 하였습니다`
       });
       return;
     }
@@ -386,7 +411,7 @@ async function handleApi(req, res, reqUrl) {
     db.submissions[id] = item;
     saveDb(db);
     sendJson(res, 200, {
-      message: isExamBlog ? "시험기간 긴급 블로그글 제출 완료" : `${week}주차 미션 제출 완료`,
+      message: isExamBlog ? "시험기간 긴급 블로그글 제출 완료" : `${sessionLabel(member.group, week)} 미션 제출 완료`,
       submission: safePublicSubmission(item),
       weekComplete: isExamBlog ? false : isWeekComplete(db, memberId, week),
       submissions: getMemberSubmissions(db, memberId).map(safePublicSubmission)
@@ -415,8 +440,8 @@ async function handleApi(req, res, reqUrl) {
     }
     const body = await parseBody(req);
     const currentWeek = Number(body.currentWeek);
-    if (!Number.isInteger(currentWeek) || currentWeek < 1 || currentWeek > 5) {
-      sendJson(res, 400, { message: "현재 운영 주차는 1~5 사이여야 합니다." });
+    if (!Number.isInteger(currentWeek) || currentWeek < 1 || currentWeek > 9) {
+      sendJson(res, 400, { message: "현재 운영 회차는 1~9 사이여야 합니다." });
       return;
     }
     const db = readDb();
@@ -448,8 +473,17 @@ async function handleApi(req, res, reqUrl) {
     const db = readDb();
     const weekParam = reqUrl.searchParams.get("week") || "0";
     const week = Number(weekParam);
+    const memberId = reqUrl.searchParams.get("memberId") || "";
+    const member = db.members[memberId];
+
+    if (!member && !requireMaster(reqUrl)) {
+      sendJson(res, 401, { message: "로그인 후 같은 반 방문 링크를 볼 수 있습니다." });
+      return;
+    }
+
     const submissions = Object.values(db.submissions)
       .filter((item) => ["mission1", EXAM_MISSION].includes(item.mission) && item.url)
+      .filter((item) => !member || item.group === member.group)
       .filter((item) => {
         if (weekParam === EXAM_WEEK) return item.mission === EXAM_MISSION;
         return !week || item.week === week;
@@ -460,7 +494,12 @@ async function handleApi(req, res, reqUrl) {
         return aWeek - bWeek || a.name.localeCompare(b.name, "ko");
       })
       .map(safePublicSubmission);
-    sendJson(res, 200, { settings: db.settings, submissions });
+    sendJson(res, 200, {
+      settings: db.settings,
+      memberGroup: member ? member.group : null,
+      groupLabel: member ? GROUP_LABELS[member.group] : "전체",
+      submissions
+    });
     return;
   }
 
@@ -482,6 +521,6 @@ const server = http.createServer(async (req, res) => {
 
 ensureDb();
 server.listen(PORT, HOST, () => {
-  console.log(`초블7기 미션 웹사이트: http://${HOST}:${PORT}`);
+  console.log(`초블8기 미션 웹사이트: http://${HOST}:${PORT}`);
   console.log(`마스터 코드: ${MASTER_CODE}`);
 });

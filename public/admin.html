@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블7기 마스터</title>
+    <title>초블8기 마스터</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-page="admin">
@@ -12,7 +12,7 @@
         <a class="brand" href="/">
           <span class="brand-mark">초7</span>
           <span>
-            <strong>초블7기</strong>
+            <strong>초블8기</strong>
             <small>Master Deck</small>
           </span>
         </a>
@@ -26,7 +26,7 @@
         <div class="login-copy">
           <p class="eyebrow">마스터 접속</p>
           <h1>전체 미션 현황</h1>
-          <p class="lead">제출 시간, 지각 제출, 5주차 성공률을 확인합니다.</p>
+          <p class="lead">제출 시간, 지각 제출, 반별 성공률을 확인합니다.</p>
         </div>
         <form id="adminLoginForm" class="panel login-panel">
           <label class="field">
@@ -42,20 +42,24 @@
         <div class="section-heading hero-heading">
           <div>
             <p class="eyebrow">Master Dashboard</p>
-            <h1>초블7기 전체 데이터</h1>
+            <h1>초블8기 전체 데이터</h1>
           </div>
           <button id="adminLogoutBtn" class="ghost-btn" type="button">마스터 로그아웃</button>
         </div>
 
         <div class="control-band">
           <label class="field compact-field">
-            <span>현재 운영 주차</span>
+            <span>현재 운영 회차</span>
             <select id="currentWeekSelect">
               <option value="1">1주차</option>
               <option value="2">2주차</option>
               <option value="3">3주차</option>
               <option value="4">4주차</option>
               <option value="5">5주차</option>
+              <option value="6">6회차</option>
+              <option value="7">7회차</option>
+              <option value="8">8회차</option>
+              <option value="9">9회차</option>
             </select>
           </label>
           <button id="saveWeekBtn" class="primary-btn small-btn" type="button">저장</button>
@@ -67,7 +71,7 @@
 
         <section class="admin-section">
           <div class="section-heading">
-            <h2>참가자별 5주차 성공 현황</h2>
+            <h2>참가자별 반별 성공 현황</h2>
             <span id="memberCountBadge"></span>
           </div>
           <div class="table-wrap">
@@ -83,6 +87,10 @@
                   <th>3주차</th>
                   <th>4주차</th>
                   <th>5주차</th>
+                  <th>6회차</th>
+                  <th>7회차</th>
+                  <th>8회차</th>
+                  <th>9회차</th>
                 </tr>
               </thead>
               <tbody id="membersTable"></tbody>
@@ -100,7 +108,7 @@
               <thead>
                 <tr>
                   <th>상태</th>
-                  <th>주차</th>
+                  <th>회차</th>
                   <th>미션</th>
                   <th>그룹</th>
                   <th>이름</th>
