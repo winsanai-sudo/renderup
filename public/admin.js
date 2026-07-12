@@ -64,16 +64,14 @@ function sessionsFor(group) {
 
 function missionLabel(mission) {
   if (mission === "mission1") return "미션1";
-  if (mission === "mission2") return "미션2";
-  return "시험기간 긴급 블로그글";
+  return "미션2";
 }
 
 function weekLabel(week) {
-  return week === "exam" ? "시험기간" : `${week}주차`;
+  return `${week}주차`;
 }
 
 function submissionWeekLabel(item) {
-  if (item.week === "exam") return "시험기간";
   return sessionsFor(item.group).find((session) => session.week === item.week)?.label || `${item.week}회차`;
 }
 
@@ -82,7 +80,7 @@ function isLate(item) {
 }
 
 function isBlogMission(item) {
-  return ["mission1", "examBlog"].includes(item.mission);
+  return item.mission === "mission1";
 }
 
 function memberSubmissions(memberId, week) {
@@ -112,14 +110,12 @@ function renderKpis() {
   const lateCount = state.submissions.filter(isLate).length;
   const completeWeeks = state.members.reduce((sum, member) => sum + successCount(member.id), 0);
   const blogLinkCount = state.submissions.filter(isBlogMission).length;
-  const examBlogCount = state.submissions.filter((item) => item.mission === "examBlog").length;
   $("#kpiGrid").innerHTML = [
     ["명단", `${state.members.length}명`],
     ["전체 제출", `${state.submissions.length}건`],
     ["성공 회차", `${completeWeeks}회`],
     ["빨간 표시", `${lateCount}건`],
-    ["블로그 링크", `${blogLinkCount}개`],
-    ["긴급글", `${examBlogCount}개`]
+    ["블로그 링크", `${blogLinkCount}개`]
   ]
     .map(([label, value]) => `<article class="kpi-card"><span>${label}</span><strong>${value}</strong></article>`)
     .join("");
@@ -181,7 +177,7 @@ async function loadAdmin() {
   const data = await api("/api/admin");
   state.settings = data.settings;
   state.members = data.members;
-  state.submissions = data.submissions;
+  state.submissions = (data.submissions || []).filter((item) => item.mission !== "examBlog");
   $("#adminLogin").classList.add("hidden");
   $("#adminView").classList.remove("hidden");
   render();
