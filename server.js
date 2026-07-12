@@ -8,7 +8,10 @@ const HOST = process.env.HOST || "0.0.0.0";
 const MASTER_CODE = process.env.MASTER_CODE || "cho7-master";
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
-const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, "data");
+const configuredDataDir = process.env.DATA_DIR;
+const DATA_DIR = process.env.RENDER && (!configuredDataDir || configuredDataDir === "./data")
+  ? "/var/data"
+  : configuredDataDir || path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 const EXAM_WEEK = "exam";
 const EXAM_MISSION = "examBlog";
@@ -139,6 +142,15 @@ function saveDb(db) {
   const tempPath = `${DB_PATH}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(db, null, 2), "utf8");
   fs.renameSync(tempPath, DB_PATH);
+}
+
+function keyedById(items = []) {
+  return items.reduce((acc, item) => {
+    if (item && item.id) {
+      acc[item.id] = item;
+    }
+    return acc;
+  }, {});
 }
 
 function send(res, status, payload, headers = {}) {
@@ -474,6 +486,35 @@ async function handleApi(req, res, reqUrl) {
     db.settings.resetAt = new Date().toISOString();
     saveDb(db);
     sendJson(res, 200, { message: "모든 데이터가 초기화되었습니다.", settings: db.settings });
+    return;
+  }
+
+  if (req.method === "POST" && reqUrl.pathname === "/api/admin/restore") {
+    if (!requireMaster(reqUrl)) {
+      sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
+      return;
+    }
+    const body = await parseBody(req);
+    if (body.confirm !== "RESTORE") {
+      sendJson(res, 400, { message: "RESTORE 확인 문구가 필요합니다." });
+      return;
+    }
+    const restored = {
+      settings: {
+        ...defaultDb().settings,
+        ...(body.settings || {}),
+        restoredAt: new Date().toISOString()
+      },
+      members: Array.isArray(body.members) ? keyedById(body.members) : body.members || {},
+      submissions: Array.isArray(body.submissions) ? keyedById(body.submissions) : body.submissions || {}
+    };
+    saveDb(restored);
+    sendJson(res, 200, {
+      message: "백업 데이터가 복구되었습니다.",
+      settings: restored.settings,
+      members: Object.keys(restored.members).length,
+      submissions: Object.keys(restored.submissions).length
+    });
     return;
   }
 
