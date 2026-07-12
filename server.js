@@ -345,8 +345,7 @@ async function handleApi(req, res, reqUrl) {
     const body = await parseBody(req);
     const memberId = String(body.memberId || "");
     const mission = String(body.mission || "");
-    const isExamBlog = mission === EXAM_MISSION;
-    const week = isExamBlog ? EXAM_WEEK : Number(body.week);
+    const week = Number(body.week);
     const db = readDb();
     const member = db.members[memberId];
 
@@ -355,11 +354,11 @@ async function handleApi(req, res, reqUrl) {
       return;
     }
     const maxWeek = GROUP_SESSIONS[member.group]?.length || 5;
-    if (!isExamBlog && (!Number.isInteger(week) || week < 1 || week > maxWeek)) {
+    if (!Number.isInteger(week) || week < 1 || week > maxWeek) {
       sendJson(res, 400, { message: `제출할 회차를 선택해주세요. ${GROUP_LABELS[member.group]}은 ${maxWeek}회까지 제출할 수 있습니다.` });
       return;
     }
-    if (!["mission1", "mission2", EXAM_MISSION].includes(mission)) {
+    if (!["mission1", "mission2"].includes(mission)) {
       sendJson(res, 400, { message: "미션을 선택해주세요." });
       return;
     }
@@ -367,7 +366,7 @@ async function handleApi(req, res, reqUrl) {
     const id = makeSubmissionId(memberId, week, mission);
     if (db.submissions[id]) {
       sendJson(res, 409, {
-        message: isExamBlog ? "시험기간 긴급 블로그글은 이미 제출 하였습니다" : `${sessionLabel(member.group, week)} 미션은 이미 제출 하였습니다`
+        message: `${sessionLabel(member.group, week)} 미션은 이미 제출 하였습니다`
       });
       return;
     }
@@ -384,7 +383,7 @@ async function handleApi(req, res, reqUrl) {
       submittedDuringWeek: Number(db.settings.currentWeek || 1)
     };
 
-    if (mission === "mission1" || isExamBlog) {
+    if (mission === "mission1") {
       const url = normalizeUrl(body.url);
       if (!url) {
         sendJson(res, 400, { message: "블로그 주소를 입력해주세요." });
@@ -418,9 +417,9 @@ async function handleApi(req, res, reqUrl) {
     db.submissions[id] = item;
     saveDb(db);
     sendJson(res, 200, {
-      message: isExamBlog ? "시험기간 긴급 블로그글 제출 완료" : `${sessionLabel(member.group, week)} 미션 제출 완료`,
+      message: `${sessionLabel(member.group, week)} 미션 제출 완료`,
       submission: safePublicSubmission(item),
-      weekComplete: isExamBlog ? false : isWeekComplete(db, memberId, week),
+      weekComplete: isWeekComplete(db, memberId, week),
       submissions: getMemberSubmissions(db, memberId).map(safePublicSubmission)
     });
     return;
@@ -435,7 +434,9 @@ async function handleApi(req, res, reqUrl) {
     sendJson(res, 200, {
       settings: db.settings,
       members: Object.values(db.members).sort((a, b) => a.name.localeCompare(b.name, "ko")),
-      submissions: Object.values(db.submissions).sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+      submissions: Object.values(db.submissions)
+        .filter((item) => item.mission !== EXAM_MISSION)
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
     });
     return;
   }
@@ -489,15 +490,12 @@ async function handleApi(req, res, reqUrl) {
     }
 
     const submissions = Object.values(db.submissions)
-      .filter((item) => ["mission1", EXAM_MISSION].includes(item.mission) && item.url)
+      .filter((item) => item.mission === "mission1" && item.url)
       .filter((item) => !member || item.group === member.group)
-      .filter((item) => {
-        if (weekParam === EXAM_WEEK) return item.mission === EXAM_MISSION;
-        return !week || item.week === week;
-      })
+      .filter((item) => !week || item.week === week)
       .sort((a, b) => {
-        const aWeek = a.week === EXAM_WEEK ? 99 : Number(a.week || 0);
-        const bWeek = b.week === EXAM_WEEK ? 99 : Number(b.week || 0);
+        const aWeek = Number(a.week || 0);
+        const bWeek = Number(b.week || 0);
         return aWeek - bWeek || a.name.localeCompare(b.name, "ko");
       })
       .map(safePublicSubmission);
