@@ -537,22 +537,6 @@ select {
   padding: 20px;
 }
 
-.exam-panel {
-  grid-column: 1 / -1;
-  border-color: rgba(255, 209, 102, 0.42);
-  background: linear-gradient(135deg, rgba(255, 209, 102, 0.1), rgba(94, 231, 255, 0.055)), var(--panel);
-}
-
-.exam-panel .mission-number,
-.exam-progress {
-  border-color: rgba(255, 209, 102, 0.48);
-}
-
-.exam-panel .mission-number {
-  color: var(--amber);
-  background: rgba(255, 209, 102, 0.1);
-}
-
 .mission-title {
   display: flex;
   align-items: center;
