@@ -9,9 +9,20 @@ const MASTER_CODE = process.env.MASTER_CODE || "cho7-master";
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const configuredDataDir = process.env.DATA_DIR;
-const DATA_DIR = process.env.RENDER && (!configuredDataDir || configuredDataDir === "./data")
-  ? "/var/data"
-  : configuredDataDir || path.join(ROOT, "data");
+const DATA_DIR_CANDIDATES = [
+  configuredDataDir,
+  process.env.RENDER ? "/var/data" : null,
+  path.join(ROOT, "data")
+].filter(Boolean);
+const DATA_DIR = DATA_DIR_CANDIDATES.find((dir) => {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}) || path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 const EXAM_WEEK = "exam";
 const EXAM_MISSION = "examBlog";
