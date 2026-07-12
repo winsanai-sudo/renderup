@@ -48,8 +48,7 @@ function sessionLabel(group, week) {
 
 function missionLabel(mission) {
   if (mission === "mission1") return "미션1";
-  if (mission === "mission2") return "미션2";
-  return "시험기간 긴급 블로그글";
+  return "미션2";
 }
 
 function fmtDate(iso) {
@@ -127,36 +126,19 @@ function renderProgress() {
       `;
     })
     .join("");
-  const examBlog = submissionFor("exam", "examBlog");
-  $("#progressGrid").innerHTML =
-    weeklyProgress +
-    `
-      <article class="progress-card exam-progress">
-        <strong>시험기간</strong>
-        <div class="mini-status">
-          <span class="status-chip ${examBlog ? "done" : "pending"}">긴급글 ${examBlog ? "완료" : "대기"}</span>
-        </div>
-      </article>
-    `;
+  $("#progressGrid").innerHTML = weeklyProgress;
 }
 
 function renderMissionForms() {
   const m1 = submissionFor(state.selectedWeek, "mission1");
   const m2 = submissionFor(state.selectedWeek, "mission2");
-  const examBlog = submissionFor("exam", "examBlog");
   const blogUrlInput = $("#blogUrlInput");
-  const examBlogUrlInput = $("#examBlogUrlInput");
   const mission1Button = $("#mission1Button");
   const mission2Button = $("#mission2Button");
-  const examBlogButton = $("#examBlogButton");
 
   blogUrlInput.value = m1?.url || "";
   blogUrlInput.disabled = Boolean(m1);
   mission1Button.textContent = m1 ? "미션1 제출 완료" : "미션1 완료";
-
-  examBlogUrlInput.value = examBlog?.url || "";
-  examBlogUrlInput.disabled = Boolean(examBlog);
-  examBlogButton.textContent = examBlog ? "긴급 블로그글 제출 완료" : "긴급 블로그글 완료";
 
   $$(`#mission2Form input[type="checkbox"]`).forEach((checkbox) => {
     checkbox.checked = Boolean(m2?.checklist?.[checkbox.name]);
@@ -212,13 +194,12 @@ function celebrate(week) {
 }
 
 async function submitMission(mission, payload) {
-  const isExamBlog = mission === "examBlog";
   try {
     const data = await api("/api/submit", {
       method: "POST",
       body: JSON.stringify({
         memberId: state.member.id,
-        week: isExamBlog ? "exam" : state.selectedWeek,
+        week: state.selectedWeek,
         mission,
         ...payload
       })
@@ -227,13 +208,11 @@ async function submitMission(mission, payload) {
     showMessage(missionMessage, data.message, "success");
     showToast(data.message);
     renderMissionView();
-    if (!isExamBlog && data.weekComplete) celebrate(state.selectedWeek);
+    if (data.weekComplete) celebrate(state.selectedWeek);
   } catch (error) {
     const text =
       error.status === 409
-        ? isExamBlog
-          ? "시험기간 긴급 블로그글은 이미 제출 하였습니다"
-          : `${sessionLabel(state.member.group, state.selectedWeek)} 미션은 이미 제출 하였습니다`
+        ? `${sessionLabel(state.member.group, state.selectedWeek)} 미션은 이미 제출 하였습니다`
         : error.message;
     showMessage(missionMessage, text, "error");
     showToast(text);
@@ -349,11 +328,6 @@ $("#mission2Form").addEventListener("submit", (event) => {
     $$(`#mission2Form input[type="checkbox"]`).map((checkbox) => [checkbox.name, checkbox.checked])
   );
   submitMission("mission2", { checklist });
-});
-
-$("#examBlogForm").addEventListener("submit", (event) => {
-  event.preventDefault();
-  submitMission("examBlog", { url: $("#examBlogUrlInput").value });
 });
 
 $("#logoutBtn").addEventListener("click", () => {
