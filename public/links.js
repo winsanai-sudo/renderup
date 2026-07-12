@@ -34,15 +34,14 @@ function groupLabel(group) {
 }
 
 function missionLabel(mission) {
-  return mission === "examBlog" ? "시험기간 긴급" : "미션1";
+  return "미션1";
 }
 
 function weekLabel(week) {
-  return week === "exam" ? "시험기간" : `${week}주차`;
+  return `${week}주차`;
 }
 
 function submissionWeekLabel(item) {
-  if (item.week === "exam") return "시험기간";
   return (groupSessions[item.group] || groupSessions.weekly1).find((session) => session.week === item.week)?.label || `${item.week}회차`;
 }
 
@@ -79,7 +78,7 @@ async function loadCurrentWeek() {
 
   const params = new URLSearchParams(window.location.search);
   const requestedWeek = params.get("week") || "";
-  if (requestedWeek === "exam" || ["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(requestedWeek)) {
+  if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(requestedWeek)) {
     $("#weekFilter").value = requestedWeek;
     return;
   }
