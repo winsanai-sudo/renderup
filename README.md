@@ -49,11 +49,25 @@ Render에서 Blueprint로 연결하면 다음 값이 사용됩니다.
 - Build Command: `npm install`
 - Start Command: `npm start`
 - Health Check: `/api/health`
-- 데이터 저장 경로: `/opt/render/project/src/data`
+- 데이터 저장: Supabase 환경변수가 있으면 Supabase, 없으면 로컬 `data/db.json`
 
 `MASTER_CODE`는 Render Dashboard에서 직접 입력하도록 `sync: false`로 설정했습니다.
 
-현재 `render.yaml`은 Free Web Service 기준입니다. 제출 데이터는 파일로 저장되므로 무료 플랜에서는 재시작/재배포 때 데이터가 사라질 수 있습니다. 장기 운영에서 데이터 보존이 중요하면 유료 Web Service와 Persistent Disk 설정으로 전환하세요.
+Render 무료 플랜에서는 서버 파일이 재시작/재배포 때 사라질 수 있으므로 운영 저장소는 Supabase를 사용하세요.
+
+## Supabase 설정
+
+Supabase SQL Editor에서 `supabase-schema.sql` 내용을 한 번 실행합니다.
+
+Render Dashboard의 Environment에 아래 값을 추가합니다.
+
+```bash
+SUPABASE_URL=https://프로젝트아이디.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=서비스롤키
+SUPABASE_TABLE=app_state
+```
+
+`/api/health` 응답의 `storage` 값이 `supabase`이면 Supabase 저장이 활성화된 상태입니다.
 
 ## 외부 임시 접속
 
@@ -67,4 +81,4 @@ Cloudflare 임시 터널로 공유하려면 PowerShell에서 실행합니다.
 
 ## 저장 데이터
 
-제출 데이터는 `data/db.json`에 저장됩니다. GitHub에는 실제 제출 데이터, 마스터 코드, 임시 공개 URL, 터널 실행 파일이 올라가지 않도록 `.gitignore`에 제외했습니다.
+Supabase 환경변수가 없을 때만 제출 데이터가 `data/db.json`에 저장됩니다. GitHub에는 실제 제출 데이터, 마스터 코드, 임시 공개 URL, 터널 실행 파일이 올라가지 않도록 `.gitignore`에 제외했습니다.
