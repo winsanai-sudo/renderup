@@ -7,14 +7,14 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: renderup-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATA_DIR
-        value: /var/data
       - key: MASTER_CODE
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_TABLE
+        value: app_state
