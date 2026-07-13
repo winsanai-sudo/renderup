@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -24,6 +24,10 @@ const DATA_DIR = DATA_DIR_CANDIDATES.find((dir) => {
   }
 }) || path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "app_state";
+const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
 const EXAM_WEEK = "exam";
 const EXAM_MISSION = "examBlog";
 const GROUP_LABELS = {
@@ -127,34 +131,102 @@ function defaultDb() {
   };
 }
 
-function ensureDb() {
+function normalizeDbShape(db) {
+  const base = defaultDb();
+  const parsed = db || {};
+  return {
+    ...base,
+    ...parsed,
+    settings: { ...base.settings, ...(parsed.settings || {}) },
+    members: parsed.members || {},
+    submissions: parsed.submissions || {}
+  };
+}
+
+function ensureFileDb() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_PATH)) {
-    saveDb(defaultDb());
+    saveFileDb(defaultDb());
   }
 }
 
-function readDb() {
-  ensureDb();
+function readFileDb() {
+  ensureFileDb();
   try {
-    const parsed = JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
-    return {
-      ...defaultDb(),
-      ...parsed,
-      settings: { ...defaultDb().settings, ...(parsed.settings || {}) },
-      members: parsed.members || {},
-      submissions: parsed.submissions || {}
-    };
+    return normalizeDbShape(JSON.parse(fs.readFileSync(DB_PATH, "utf8")));
   } catch {
     return defaultDb();
   }
 }
 
-function saveDb(db) {
+function saveFileDb(db) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const tempPath = `${DB_PATH}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(db, null, 2), "utf8");
   fs.renameSync(tempPath, DB_PATH);
+}
+
+async function supabaseRequest(pathname, options = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase 저장소 오류: ${response.status} ${text}`);
+  }
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function readSupabaseDb() {
+  const rows = await supabaseRequest(`${SUPABASE_TABLE}?key=eq.db&select=data&limit=1`, {
+    method: "GET"
+  });
+  if (Array.isArray(rows) && rows[0]?.data) {
+    return normalizeDbShape(rows[0].data);
+  }
+  const db = defaultDb();
+  await saveSupabaseDb(db);
+  return db;
+}
+
+async function saveSupabaseDb(db) {
+  await supabaseRequest(`${SUPABASE_TABLE}?on_conflict=key`, {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      key: "db",
+      data: db,
+      updated_at: new Date().toISOString()
+    })
+  });
+}
+
+async function readDb() {
+  return USE_SUPABASE ? readSupabaseDb() : readFileDb();
+}
+
+async function saveDb(db) {
+  if (USE_SUPABASE) {
+    await saveSupabaseDb(db);
+    return;
+  }
+  saveFileDb(db);
+}
+
+async function ensureDb() {
+  if (USE_SUPABASE) {
+    await readSupabaseDb();
+    return;
+  }
+  ensureFileDb();
 }
 
 function keyedById(items = []) {
@@ -299,12 +371,12 @@ function serveStatic(req, res, pathname) {
 
 async function handleApi(req, res, reqUrl) {
   if (req.method === "GET" && reqUrl.pathname === "/api/health") {
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, { ok: true, storage: USE_SUPABASE ? "supabase" : "file" });
     return;
   }
 
   if (req.method === "GET" && reqUrl.pathname === "/api/roster") {
-    const db = readDb();
+    const db = await readDb();
     sendJson(res, 200, { roster: ROSTER, groupLabels: GROUP_LABELS, groupSessions: GROUP_SESSIONS, settings: db.settings });
     return;
   }
@@ -328,7 +400,7 @@ async function handleApi(req, res, reqUrl) {
       return;
     }
 
-    const db = readDb();
+    const db = await readDb();
     const id = makeMemberId(group, name, phone);
     const now = new Date().toISOString();
     db.members[id] = {
@@ -341,7 +413,7 @@ async function handleApi(req, res, reqUrl) {
       firstLoginAt: db.members[id]?.firstLoginAt || now,
       lastLoginAt: now
     };
-    saveDb(db);
+    await saveDb(db);
     sendJson(res, 200, {
       member: { ...db.members[id], phone: undefined },
       submissions: getMemberSubmissions(db, id).map(safePublicSubmission),
@@ -352,7 +424,7 @@ async function handleApi(req, res, reqUrl) {
 
   if (req.method === "GET" && reqUrl.pathname === "/api/me") {
     const memberId = reqUrl.searchParams.get("memberId") || "";
-    const db = readDb();
+    const db = await readDb();
     const member = db.members[memberId];
     if (!member) {
       sendJson(res, 404, { message: "로그인 정보가 없습니다." });
@@ -371,7 +443,7 @@ async function handleApi(req, res, reqUrl) {
     const memberId = String(body.memberId || "");
     const mission = String(body.mission || "");
     const week = Number(body.week);
-    const db = readDb();
+    const db = await readDb();
     const member = db.members[memberId];
 
     if (!member) {
@@ -440,7 +512,7 @@ async function handleApi(req, res, reqUrl) {
     }
 
     db.submissions[id] = item;
-    saveDb(db);
+    await saveDb(db);
     sendJson(res, 200, {
       message: `${sessionLabel(member.group, week)} 미션 제출 완료`,
       submission: safePublicSubmission(item),
@@ -455,7 +527,7 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
       return;
     }
-    const db = readDb();
+    const db = await readDb();
     sendJson(res, 200, {
       settings: db.settings,
       members: Object.values(db.members).sort((a, b) => a.name.localeCompare(b.name, "ko")),
@@ -477,10 +549,10 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 400, { message: "현재 운영 회차는 1~9 사이여야 합니다." });
       return;
     }
-    const db = readDb();
+    const db = await readDb();
     db.settings.currentWeek = currentWeek;
     db.settings.updatedAt = new Date().toISOString();
-    saveDb(db);
+    await saveDb(db);
     sendJson(res, 200, { settings: db.settings });
     return;
   }
@@ -497,7 +569,7 @@ async function handleApi(req, res, reqUrl) {
     }
     const db = defaultDb();
     db.settings.resetAt = new Date().toISOString();
-    saveDb(db);
+    await saveDb(db);
     sendJson(res, 200, { message: "모든 데이터가 초기화되었습니다.", settings: db.settings });
     return;
   }
@@ -521,7 +593,7 @@ async function handleApi(req, res, reqUrl) {
       members: Array.isArray(body.members) ? keyedById(body.members) : body.members || {},
       submissions: Array.isArray(body.submissions) ? keyedById(body.submissions) : body.submissions || {}
     };
-    saveDb(restored);
+    await saveDb(restored);
     sendJson(res, 200, {
       message: "백업 데이터가 복구되었습니다.",
       settings: restored.settings,
@@ -532,7 +604,7 @@ async function handleApi(req, res, reqUrl) {
   }
 
   if (req.method === "GET" && reqUrl.pathname === "/api/links") {
-    const db = readDb();
+    const db = await readDb();
     const weekParam = reqUrl.searchParams.get("week") || "0";
     const week = Number(weekParam);
     const memberId = reqUrl.searchParams.get("memberId") || "";
@@ -578,8 +650,16 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDb();
-server.listen(PORT, HOST, () => {
-  console.log(`초블8기 미션 웹사이트: http://${HOST}:${PORT}`);
-  console.log(`마스터 코드: ${MASTER_CODE}`);
-});
+ensureDb()
+  .then(() => {
+    server.listen(PORT, HOST, () => {
+      console.log(`초블8기 미션 웹사이트: http://${HOST}:${PORT}`);
+      console.log(`저장소: ${USE_SUPABASE ? "Supabase" : "local file"}`);
+      console.log(`마스터 코드: ${MASTER_CODE}`);
+    });
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
