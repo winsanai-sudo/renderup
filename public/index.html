@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-page="user">
+    <canvas id="ambientFx" aria-hidden="true"></canvas>
     <canvas id="fireworks" aria-hidden="true"></canvas>
     <main class="app-shell">
       <nav class="topbar">
@@ -31,7 +32,7 @@
       <section id="loginView" class="login-grid">
         <div class="login-copy">
           <p class="eyebrow">초강스블로그 9기</p>
-          <h1>초블9기 미션 체크인</h1>
+          <h1>초블9기<br class="desktop-title-break" /> 미션 체크인</h1>
           <p class="lead">이름을 고르고 핸드폰 번호로 입장하세요.</p>
           <div class="signal-strip" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span>
@@ -121,6 +122,7 @@
     </main>
 
     <div id="toast" class="toast" role="status"></div>
+    <script src="/effects.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
