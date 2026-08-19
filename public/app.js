@@ -245,8 +245,9 @@ async function restoreLogin() {
 }
 
 function celebrate(week) {
-  showToast(`${sessionLabel(state.member.group, week)} 미션 성공!!`);
-  launchFireworks();
+  const message = `${sessionLabel(state.member.group, week)} 미션 성공!!`;
+  showToast(message);
+  launchFireworks(message);
 }
 
 async function submitMission(mission, payload) {
@@ -275,59 +276,174 @@ async function submitMission(mission, payload) {
   }
 }
 
-function launchFireworks() {
+function launchFireworks(message) {
   const canvas = $("#fireworks");
   const ctx = canvas.getContext("2d");
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const overlay = $("#celebrationOverlay");
+  const title = $("#celebrationTitle");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const duration = reducedMotion ? 1200 : 2200;
+  let dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+
+  window.clearTimeout(launchFireworks.overlayTimer);
+  overlay.classList.remove("show");
+  title.textContent = message;
+  overlay.setAttribute("aria-hidden", "false");
+  void overlay.offsetWidth;
+  overlay.classList.add("show");
+  launchFireworks.overlayTimer = window.setTimeout(() => {
+    overlay.classList.remove("show");
+    overlay.setAttribute("aria-hidden", "true");
+  }, duration + 80);
+
+  if (launchFireworks.frameId) cancelAnimationFrame(launchFireworks.frameId);
+
   const resize = () => {
+    dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
     canvas.width = Math.floor(window.innerWidth * dpr);
     canvas.height = Math.floor(window.innerHeight * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
   resize();
+  window.addEventListener("resize", resize);
 
   const colors = ["#5ee7ff", "#77ffb6", "#ff6f91", "#ffd166", "#ffffff"];
+  const mobile = window.innerWidth <= 640;
+  const burstCount = reducedMotion ? 4 : mobile ? 8 : 12;
+  const particlesPerBurst = reducedMotion ? 32 : mobile ? 58 : 76;
   const particles = [];
-  for (let burst = 0; burst < 6; burst += 1) {
-    const x = window.innerWidth * (0.18 + Math.random() * 0.64);
-    const y = window.innerHeight * (0.14 + Math.random() * 0.42);
-    for (let i = 0; i < 54; i += 1) {
-      const angle = (Math.PI * 2 * i) / 54;
-      const speed = 2.4 + Math.random() * 4.2;
+  const rings = [];
+  const confetti = [];
+
+  for (let burst = 0; burst < burstCount; burst += 1) {
+    const x = window.innerWidth * (0.08 + ((burst * 0.23 + Math.random() * 0.16) % 0.84));
+    const y = window.innerHeight * (0.12 + Math.random() * 0.48);
+    const delay = reducedMotion ? burst * 90 : burst * 105;
+    rings.push({ x, y, delay, color: colors[burst % colors.length] });
+
+    for (let i = 0; i < particlesPerBurst; i += 1) {
+      const angle = (Math.PI * 2 * i) / particlesPerBurst + Math.random() * 0.08;
+      const speed = 2.8 + Math.random() * (mobile ? 4.6 : 6.2);
       particles.push({
         x,
         y,
+        previousX: x,
+        previousY: y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 70 + Math.random() * 28,
-        color: colors[Math.floor(Math.random() * colors.length)]
+        gravity: 0.045 + Math.random() * 0.035,
+        drag: 0.982 + Math.random() * 0.01,
+        delay,
+        life: 720 + Math.random() * 700,
+        size: 1.4 + Math.random() * 2.3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        active: false
       });
     }
   }
 
-  let frame = 0;
-  function tick() {
-    frame += 1;
+  const confettiCount = reducedMotion ? 36 : mobile ? 90 : 170;
+  for (let i = 0; i < confettiCount; i += 1) {
+    confetti.push({
+      x: Math.random() * window.innerWidth,
+      y: -20 - Math.random() * window.innerHeight * 0.55,
+      vx: -0.8 + Math.random() * 1.6,
+      vy: 2.2 + Math.random() * 3.6,
+      width: 4 + Math.random() * 6,
+      height: 7 + Math.random() * 10,
+      rotation: Math.random() * Math.PI,
+      spin: -0.18 + Math.random() * 0.36,
+      delay: 180 + Math.random() * 520,
+      color: colors[i % colors.length]
+    });
+  }
+
+  const startedAt = performance.now();
+  let previousFrame = startedAt;
+
+  function tick(now) {
+    const elapsed = now - startedAt;
+    const frameScale = Math.min(2, Math.max(0.5, (now - previousFrame) / 16.67));
+    previousFrame = now;
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    const fadeOut = Math.max(0, Math.min(1, (duration - elapsed) / 420));
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.16 * fadeOut;
+    ctx.fillStyle = "#02060a";
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+    if (elapsed < 180) {
+      ctx.globalAlpha = (1 - elapsed / 180) * 0.24;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    }
+
     ctx.globalCompositeOperation = "lighter";
+    rings.forEach((ring) => {
+      const progress = (elapsed - ring.delay) / 680;
+      if (progress < 0 || progress > 1) return;
+      ctx.globalAlpha = (1 - progress) * 0.7;
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = 2.4 - progress * 1.6;
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, 18 + progress * (mobile ? 82 : 126), 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
     particles.forEach((p) => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.045;
-      p.life -= 1;
-      ctx.globalAlpha = Math.max(0, p.life / 92);
+      const age = elapsed - p.delay;
+      if (age < 0 || age > p.life) return;
+      if (!p.active) p.active = true;
+      p.previousX = p.x;
+      p.previousY = p.y;
+      p.x += p.vx * frameScale;
+      p.y += p.vy * frameScale;
+      p.vx *= Math.pow(p.drag, frameScale);
+      p.vy = p.vy * Math.pow(p.drag, frameScale) + p.gravity * frameScale;
+
+      const life = 1 - age / p.life;
+      ctx.globalAlpha = Math.max(0, life) * 0.95;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = Math.max(0.6, p.size * life);
+      ctx.beginPath();
+      ctx.moveTo(p.previousX, p.previousY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.max(0.7, p.size * life), 0, Math.PI * 2);
       ctx.fill();
     });
-    if (frame < 100) {
-      requestAnimationFrame(tick);
+
+    ctx.globalCompositeOperation = "source-over";
+    confetti.forEach((piece) => {
+      const age = elapsed - piece.delay;
+      if (age < 0) return;
+      piece.x += piece.vx * frameScale;
+      piece.y += piece.vy * frameScale;
+      piece.rotation += piece.spin * frameScale;
+      piece.vy += 0.012 * frameScale;
+      ctx.save();
+      ctx.translate(piece.x, piece.y);
+      ctx.rotate(piece.rotation);
+      ctx.globalAlpha = Math.min(1, age / 180) * fadeOut;
+      ctx.fillStyle = piece.color;
+      ctx.fillRect(-piece.width / 2, -piece.height / 2, piece.width, piece.height);
+      ctx.restore();
+    });
+
+    ctx.globalAlpha = 1;
+    if (elapsed < duration) {
+      launchFireworks.frameId = requestAnimationFrame(tick);
     } else {
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      window.removeEventListener("resize", resize);
+      launchFireworks.frameId = 0;
     }
   }
-  tick();
+  launchFireworks.frameId = requestAnimationFrame(tick);
 }
 
 $$(".segment").forEach((button) => {

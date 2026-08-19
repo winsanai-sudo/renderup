@@ -800,7 +800,7 @@ select {
   position: fixed;
   left: 50%;
   bottom: 24px;
-  z-index: 20;
+  z-index: 44;
   width: min(520px, calc(100% - 32px));
   transform: translate(-50%, 24px);
   border: 1px solid rgba(119, 255, 182, 0.45);
@@ -824,8 +824,80 @@ select {
 #fireworks {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 40;
   pointer-events: none;
+}
+
+.celebration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  text-align: center;
+}
+
+.celebration-overlay.show {
+  visibility: visible;
+  animation: celebration-stage 2.2s ease both;
+}
+
+.celebration-copy {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(920px, 100%);
+  filter: drop-shadow(0 0 36px rgba(94, 231, 255, 0.42));
+}
+
+.celebration-copy span,
+.celebration-copy small {
+  color: var(--mint);
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.celebration-copy strong {
+  color: #fff;
+  font-size: 3.7rem;
+  line-height: 1.12;
+  text-shadow:
+    0 0 18px rgba(255, 255, 255, 0.7),
+    0 0 42px rgba(94, 231, 255, 0.72),
+    0 0 76px rgba(255, 111, 145, 0.42);
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.celebration-copy small {
+  color: var(--amber);
+}
+
+@keyframes celebration-stage {
+  0% {
+    transform: scale(0.72);
+    filter: blur(12px);
+    opacity: 0;
+  }
+  14% {
+    transform: scale(1.06);
+    filter: blur(0);
+    opacity: 1;
+  }
+  72% {
+    transform: scale(1);
+    filter: blur(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.16);
+    filter: blur(5px);
+    opacity: 0;
+  }
 }
 
 .admin-login {
@@ -1171,6 +1243,14 @@ tr.late-row td {
     bottom: calc(14px + env(safe-area-inset-bottom));
     width: calc(100% - 24px);
   }
+
+  .celebration-overlay {
+    padding: 18px;
+  }
+
+  .celebration-copy strong {
+    font-size: 2.15rem;
+  }
 }
 
 @media (pointer: coarse) {
@@ -1200,6 +1280,10 @@ tr.late-row td {
 
   .brand-mark::after {
     animation: none;
+  }
+
+  .celebration-overlay.show {
+    animation-duration: 1.2s;
   }
 }
 
