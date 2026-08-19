@@ -105,7 +105,7 @@ button:disabled {
 
 .brand-mark {
   display: grid;
-  width: 44px;
+  width: 64px;
   height: 44px;
   place-items: center;
   border: 1px solid rgba(94, 231, 255, 0.45);
@@ -113,6 +113,7 @@ button:disabled {
   color: var(--mint);
   background: linear-gradient(135deg, rgba(94, 231, 255, 0.16), rgba(255, 111, 145, 0.1));
   box-shadow: 0 0 28px rgba(94, 231, 255, 0.16);
+  font-size: 0.94rem;
   font-weight: 900;
 }
 
@@ -437,7 +438,17 @@ select {
   font-size: clamp(2rem, 4vw, 3.8rem);
 }
 
-.week-band,
+.week-band {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
 .control-band {
   display: flex;
   align-items: center;
@@ -456,12 +467,16 @@ select {
 
 .week-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(48px, 70px));
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  justify-self: end;
+  width: min(100%, 660px);
   gap: 8px;
 }
 
 .week-btn {
+  min-width: 0;
   min-height: 46px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--muted);
@@ -814,45 +829,173 @@ tr.late-row td {
 }
 
 @media (max-width: 640px) {
+  body {
+    background-size: 30px 30px, 30px 30px, auto, auto, auto;
+  }
+
   .app-shell,
   .wide-shell {
-    width: min(100% - 20px, 100%);
-    padding-top: 14px;
+    width: calc(100% - 24px);
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
   }
 
   .topbar,
-  .section-heading,
-  .week-band {
+  .hero-heading {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .topbar {
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .brand {
+    align-self: flex-start;
+  }
+
   .nav-actions {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .week-band {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .week-band strong {
+    font-size: 1.35rem;
   }
 
   .ghost-link {
-    flex: 1;
+    width: 100%;
+    min-height: 46px;
   }
 
   h1 {
-    font-size: 2.55rem;
+    font-size: 2.35rem;
+    line-height: 1.08;
   }
 
-  .roster-list,
+  .hero-heading h1 {
+    font-size: 2rem;
+  }
+
+  .login-grid {
+    gap: 22px;
+  }
+
+  .login-copy {
+    padding: 4px 2px 0;
+  }
+
+  .lead {
+    margin-bottom: 0;
+    font-size: 1rem;
+  }
+
+  .signal-strip {
+    margin-top: 22px;
+  }
+
+  .login-panel,
+  .mission-panel {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .name-zone .section-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+
   .check-list,
-  .progress-grid,
   .kpi-grid,
   .links-grid {
     grid-template-columns: 1fr;
   }
 
+  .roster-list,
+  .progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .roster-list {
+    max-height: 44vh;
+    padding-right: 2px;
+  }
+
+  .name-btn {
+    min-height: 46px;
+    padding: 0 10px;
+    text-align: center;
+  }
+
   .week-picker {
     grid-template-columns: repeat(5, 1fr);
+    justify-self: stretch;
+    width: 100%;
+    gap: 7px;
   }
 
   .week-btn {
     min-width: 0;
+    min-height: 48px;
     padding: 0;
+  }
+
+  .week-btn.active {
+    box-shadow: inset 0 0 0 1px rgba(94, 231, 255, 0.2), 0 0 20px rgba(94, 231, 255, 0.12);
+  }
+
+  .progress-card {
+    min-height: 108px;
+    padding: 12px;
+  }
+
+  .mission-title {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .mission-number {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+
+  .mission-title h2 {
+    font-size: 1.25rem;
+  }
+
+  input,
+  select,
+  .primary-btn {
+    min-height: 50px;
+  }
+
+  .toast {
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+  }
+}
+
+@media (max-width: 360px) {
+  h1 {
+    font-size: 2.05rem;
+  }
+
+  .brand-mark {
+    width: 58px;
+  }
+
+  .progress-grid {
+    grid-template-columns: 1fr;
   }
 }

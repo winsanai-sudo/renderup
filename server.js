@@ -36,22 +36,23 @@ const GROUP_LABELS = {
 };
 const GROUP_SESSIONS = {
   weekly1: [
-    { week: 1, label: "1주차" },
-    { week: 2, label: "2주차" },
-    { week: 3, label: "3주차" },
-    { week: 4, label: "4주차" },
-    { week: 5, label: "5주차" }
+    { week: 1, label: "1주차 · 일요일" },
+    { week: 2, label: "2주차 · 일요일" },
+    { week: 3, label: "3주차 · 일요일" },
+    { week: 4, label: "4주차 · 일요일" },
+    { week: 5, label: "5주차 · 일요일" }
   ],
   weekly2: [
-    { week: 1, label: "1회차 · 일요일" },
-    { week: 2, label: "2회차 · 수요일" },
-    { week: 3, label: "3회차 · 일요일" },
-    { week: 4, label: "4회차 · 수요일" },
-    { week: 5, label: "5회차 · 일요일" },
-    { week: 6, label: "6회차 · 수요일" },
-    { week: 7, label: "7회차 · 일요일" },
-    { week: 8, label: "8회차 · 수요일" },
-    { week: 9, label: "9회차 · 일요일" }
+    { week: 1, label: "1회차 · 수요일" },
+    { week: 2, label: "2회차 · 일요일" },
+    { week: 3, label: "3회차 · 수요일" },
+    { week: 4, label: "4회차 · 일요일" },
+    { week: 5, label: "5회차 · 수요일" },
+    { week: 6, label: "6회차 · 일요일" },
+    { week: 7, label: "7회차 · 수요일" },
+    { week: 8, label: "8회차 · 일요일" },
+    { week: 9, label: "9회차 · 수요일" },
+    { week: 10, label: "10회차 · 일요일" }
   ]
 };
 
@@ -69,8 +70,11 @@ const MIME = {
 
 const ROSTER = {
   weekly1: [
+    "강태욱",
     "강현선",
+    "김소연",
     "김영유",
+    "김후중",
     "나은영",
     "남식훈",
     "문재웅",
@@ -78,44 +82,43 @@ const ROSTER = {
     "박윤정",
     "백화샘",
     "설지샘",
-    "세준샘",
     "수학맘",
+    "안보현",
+    "안원우",
     "안은주",
+    "유재금",
     "유재원",
     "이동휘",
     "이민호",
-    "이종민",
+    "이지훈",
+    "임슈스",
     "임예희",
     "장세완",
     "정영운",
+    "조우제",
     "추재원",
+    "대호샘",
+    "황다겸",
     "황해룡",
     "정혜원",
-    "소매샘",
-    "승빈샘",
-    "룡수학",
-    "다겸샘",
-    "후중샘",
-    "우제샘",
-    "임슈스",
-    "유재금",
+    "유소매",
+    "김하현",
     "송혜빈",
-    "소연샘"
+    "승빈샘",
+    "류용수"
   ],
   weekly2: [
+    "구본식",
     "김민호",
     "김보미",
     "김원표",
-    "모리샘",
-    "민하샘",
-    "아영샘",
+    "모리",
+    "민하",
     "신선미",
+    "우석",
     "이기호",
     "김유진",
-    "한문수",
-    "류용수",
-    "우석샘",
-    "구본식"
+    "룡쌤"
   ]
 };
 
@@ -545,7 +548,7 @@ async function handleApi(req, res, reqUrl) {
     }
     const body = await parseBody(req);
     const currentWeek = Number(body.currentWeek);
-    if (!Number.isInteger(currentWeek) || currentWeek < 1 || currentWeek > 9) {
+    if (!Number.isInteger(currentWeek) || currentWeek < 1 || currentWeek > 10) {
       sendJson(res, 400, { message: "현재 운영 회차는 1~9 사이여야 합니다." });
       return;
     }
@@ -653,7 +656,7 @@ const server = http.createServer(async (req, res) => {
 ensureDb()
   .then(() => {
     server.listen(PORT, HOST, () => {
-      console.log(`초블8기 미션 웹사이트: http://${HOST}:${PORT}`);
+      console.log(`초블9기 미션 웹사이트: http://${HOST}:${PORT}`);
       console.log(`저장소: ${USE_SUPABASE ? "Supabase" : "local file"}`);
       console.log(`마스터 코드: ${MASTER_CODE}`);
     });

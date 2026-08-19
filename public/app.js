@@ -1,17 +1,24 @@
 const state = {
   roster: { weekly1: [], weekly2: [] },
   groupSessions: {
-    weekly1: [1, 2, 3, 4, 5].map((week) => ({ week, label: `${week}주차` })),
+    weekly1: [
+      "1주차 · 일요일",
+      "2주차 · 일요일",
+      "3주차 · 일요일",
+      "4주차 · 일요일",
+      "5주차 · 일요일"
+    ].map((label, index) => ({ week: index + 1, label })),
     weekly2: [
-      "1회차 · 일요일",
-      "2회차 · 수요일",
-      "3회차 · 일요일",
-      "4회차 · 수요일",
-      "5회차 · 일요일",
-      "6회차 · 수요일",
-      "7회차 · 일요일",
-      "8회차 · 수요일",
-      "9회차 · 일요일"
+      "1회차 · 수요일",
+      "2회차 · 일요일",
+      "3회차 · 수요일",
+      "4회차 · 일요일",
+      "5회차 · 수요일",
+      "6회차 · 일요일",
+      "7회차 · 수요일",
+      "8회차 · 일요일",
+      "9회차 · 수요일",
+      "10회차 · 일요일"
     ].map((label, index) => ({ week: index + 1, label }))
   },
   group: "weekly1",
@@ -24,6 +31,25 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+const WEEKLY1_SCHEDULE = [
+  { week: 1, date: "2026-08-23" },
+  { week: 2, date: "2026-08-30" },
+  { week: 3, date: "2026-09-06" },
+  { week: 4, date: "2026-09-13" },
+  { week: 5, date: "2026-09-20" }
+];
+const WEEKLY2_SCHEDULE = [
+  { week: 1, date: "2026-08-19" },
+  { week: 2, date: "2026-08-23" },
+  { week: 3, date: "2026-08-26" },
+  { week: 4, date: "2026-08-30" },
+  { week: 5, date: "2026-09-02" },
+  { week: 6, date: "2026-09-06" },
+  { week: 7, date: "2026-09-09" },
+  { week: 8, date: "2026-09-13" },
+  { week: 9, date: "2026-09-16" },
+  { week: 10, date: "2026-09-20" }
+];
 
 const loginView = $("#loginView");
 const missionView = $("#missionView");
@@ -44,6 +70,37 @@ function sessionsFor(group) {
 
 function sessionLabel(group, week) {
   return sessionsFor(group).find((item) => item.week === week)?.label || `${week}회차`;
+}
+
+function todayKstDateString() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function scheduledWeekFor(schedule, today) {
+  let activeWeek = schedule[0]?.week;
+  for (const session of schedule) {
+    if (session.date > today) break;
+    activeWeek = session.week;
+  }
+  return activeWeek;
+}
+
+function defaultWeekFor(group) {
+  const sessions = sessionsFor(group);
+  const schedule = group === "weekly2" ? WEEKLY2_SCHEDULE : WEEKLY1_SCHEDULE;
+  if (schedule.length) {
+    const today = todayKstDateString();
+    return scheduledWeekFor(schedule, today) || sessions[0].week;
+  }
+  const configuredWeek = Number(state.settings.currentWeeks?.[group] || state.settings.currentWeek);
+  return sessions.some((item) => item.week === configuredWeek) ? configuredWeek : sessions[0].week;
 }
 
 function missionLabel(mission) {
@@ -97,7 +154,7 @@ function renderWeekPicker() {
   const sessions = sessionsFor(state.member?.group || state.group);
   $("#weekStatusTitle").textContent = sessionLabel(state.member?.group || state.group, state.selectedWeek);
   $("#weekPicker").innerHTML = sessions
-    .map((session) => `<button type="button" class="week-btn ${session.week === state.selectedWeek ? "active" : ""}" data-week="${session.week}">${session.week}</button>`)
+    .map((session) => `<button type="button" class="week-btn ${session.week === state.selectedWeek ? "active" : ""}" data-week="${session.week}" aria-pressed="${session.week === state.selectedWeek}">${session.week}</button>`)
     .join("");
 }
 
@@ -149,7 +206,7 @@ function renderMissionForms() {
 
 function renderMissionView() {
   if (!state.member) return;
-  $("#memberGroup").textContent = `${groupLabel(state.member.group)} · 현재 운영 ${sessionLabel(state.member.group, state.settings.currentWeek || 1)}`;
+  $("#memberGroup").textContent = `${groupLabel(state.member.group)} · 현재 인증 ${sessionLabel(state.member.group, state.selectedWeek)}`;
   $("#memberName").textContent = `${state.member.name} 미션 보드`;
   renderWeekPicker();
   renderProgress();
@@ -160,8 +217,7 @@ function enterMissionView(payload) {
   state.member = payload.member;
   state.submissions = payload.submissions || [];
   state.settings = payload.settings || state.settings;
-  const sessions = sessionsFor(state.member.group);
-  state.selectedWeek = sessions.some((item) => item.week === Number(state.settings.currentWeek)) ? Number(state.settings.currentWeek) : sessions[0].week;
+  state.selectedWeek = defaultWeekFor(state.member.group);
   localStorage.setItem("choblog-member-id", state.member.id);
   loginView.classList.add("hidden");
   missionView.classList.remove("hidden");

@@ -5,20 +5,27 @@ const state = {
   submissions: []
 };
 const groupSessions = {
-  weekly1: [1, 2, 3, 4, 5].map((week) => ({ week, label: `${week}주차` })),
+  weekly1: [
+    "1주차 · 일요일",
+    "2주차 · 일요일",
+    "3주차 · 일요일",
+    "4주차 · 일요일",
+    "5주차 · 일요일"
+  ].map((label, index) => ({ week: index + 1, label })),
   weekly2: [
-    "1회차 · 일요일",
-    "2회차 · 수요일",
-    "3회차 · 일요일",
-    "4회차 · 수요일",
-    "5회차 · 일요일",
-    "6회차 · 수요일",
-    "7회차 · 일요일",
-    "8회차 · 수요일",
-    "9회차 · 일요일"
+    "1회차 · 수요일",
+    "2회차 · 일요일",
+    "3회차 · 수요일",
+    "4회차 · 일요일",
+    "5회차 · 수요일",
+    "6회차 · 일요일",
+    "7회차 · 수요일",
+    "8회차 · 일요일",
+    "9회차 · 수요일",
+    "10회차 · 일요일"
   ].map((label, index) => ({ week: index + 1, label }))
 };
-const allWeeks = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const allWeeks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const $ = (selector) => document.querySelector(selector);
 const toast = $("#toast");
@@ -138,7 +145,7 @@ function renderMembers() {
           </tr>
         `;
       })
-      .join("") || `<tr><td colspan="13">아직 접속한 명단이 없습니다.</td></tr>`;
+      .join("") || `<tr><td colspan="14">아직 접속한 명단이 없습니다.</td></tr>`;
 }
 
 function renderSubmissions() {
