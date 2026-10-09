@@ -591,7 +591,7 @@ function serveStatic(req, res, pathname) {
 
 async function handleApi(req, res, reqUrl) {
   if (req.method === "GET" && reqUrl.pathname === "/api/health") {
-    sendJson(res, 200, { ok: true, generation: 10, storage: USE_SUPABASE ? "supabase" : "file" });
+    sendJson(res, 200, { ok: true, generation: 10, masterGeneration: 10, storage: USE_SUPABASE ? "supabase" : "file" });
     return;
   }
 
