@@ -288,7 +288,7 @@ button:disabled {
 
 .brand-mark {
   display: grid;
-  width: 64px;
+  width: 70px;
   height: 44px;
   place-items: center;
   border: 1px solid rgba(94, 231, 255, 0.45);
@@ -772,6 +772,31 @@ select {
   font-weight: 800;
 }
 
+.mission-guide {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(176, 247, 255, 0.16);
+  padding-top: 16px;
+}
+
+.mission-guide strong {
+  color: var(--cyan);
+  font-size: 0.92rem;
+}
+
+.mission-guide ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.mission-guide li::marker {
+  color: var(--mint);
+}
+
 .check-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -909,13 +934,35 @@ select {
   flex-wrap: wrap;
 }
 
+.auto-week-status {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-right: auto;
+}
+
+.auto-week-status span,
+.auto-week-status small {
+  color: var(--muted);
+}
+
+.auto-week-status strong {
+  color: var(--mint);
+  font-size: 1.35rem;
+}
+
+.auto-week-status small {
+  grid-column: 1 / -1;
+}
+
 .compact-field {
   width: min(220px, 100%);
 }
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -941,6 +988,34 @@ select {
   display: grid;
   gap: 12px;
   margin-top: 8px;
+}
+
+.review-section {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.review-heading {
+  align-items: end;
+}
+
+.review-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.audit-status {
+  border-left: 3px solid var(--cyan);
+  padding: 10px 12px;
+  color: var(--muted);
+  background: rgba(94, 231, 255, 0.06);
+  line-height: 1.5;
+}
+
+.status-detail {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .table-wrap {
@@ -1096,7 +1171,8 @@ tr.late-row td {
   }
 
   .topbar,
-  .hero-heading {
+  .hero-heading,
+  .review-heading {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1177,6 +1253,23 @@ tr.late-row td {
   .kpi-grid,
   .links-grid {
     grid-template-columns: 1fr;
+  }
+
+  .control-band {
+    align-items: stretch;
+  }
+
+  .control-band > button {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .auto-week-status {
+    flex: 1 0 100%;
+  }
+
+  .review-heading .week-filter {
+    width: 100%;
+    margin-left: 0;
   }
 
   .roster-list,
@@ -1293,7 +1386,7 @@ tr.late-row td {
   }
 
   .brand-mark {
-    width: 58px;
+    width: 66px;
   }
 
   .progress-grid {

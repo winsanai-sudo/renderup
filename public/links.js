@@ -1,24 +1,19 @@
 const $ = (selector) => document.querySelector(selector);
 const toast = $("#toast");
 const groupSessions = {
-  weekly1: [
+  junior: [
     "1주차 · 일요일",
     "2주차 · 일요일",
     "3주차 · 일요일",
     "4주차 · 일요일",
     "5주차 · 일요일"
   ].map((label, index) => ({ week: index + 1, label })),
-  weekly2: [
-    "1회차 · 수요일",
-    "2회차 · 일요일",
-    "3회차 · 수요일",
-    "4회차 · 일요일",
-    "5회차 · 수요일",
-    "6회차 · 일요일",
-    "7회차 · 수요일",
-    "8회차 · 일요일",
-    "9회차 · 수요일",
-    "10회차 · 일요일"
+  senior: [
+    "1주차 · 일요일",
+    "2주차 · 일요일",
+    "3주차 · 일요일",
+    "4주차 · 일요일",
+    "5주차 · 일요일"
   ].map((label, index) => ({ week: index + 1, label }))
 };
 
@@ -37,7 +32,7 @@ function fmtDate(iso) {
 }
 
 function groupLabel(group) {
-  return group === "weekly2" ? "주2회반" : "주1회반";
+  return group === "senior" ? "시니어 팀" : "주니어 팀";
 }
 
 function missionLabel(mission) {
@@ -49,7 +44,7 @@ function weekLabel(week) {
 }
 
 function submissionWeekLabel(item) {
-  return (groupSessions[item.group] || groupSessions.weekly1).find((session) => session.week === item.week)?.label || `${item.week}회차`;
+  return (groupSessions[item.group] || groupSessions.junior).find((session) => session.week === item.week)?.label || `${item.week}주차`;
 }
 
 function isLate(item) {
@@ -57,7 +52,7 @@ function isLate(item) {
 }
 
 async function loadLinks() {
-  const memberId = localStorage.getItem("choblog-member-id");
+  const memberId = localStorage.getItem("choblog10-member-id");
   if (!memberId) {
     renderLoginRequired();
     return;
@@ -77,7 +72,7 @@ async function loadLinks() {
 }
 
 async function loadCurrentWeek() {
-  const memberId = localStorage.getItem("choblog-member-id");
+  const memberId = localStorage.getItem("choblog10-member-id");
   if (!memberId) {
     renderLoginRequired();
     return;
@@ -85,7 +80,7 @@ async function loadCurrentWeek() {
 
   const params = new URLSearchParams(window.location.search);
   const requestedWeek = params.get("week") || "";
-  if (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(requestedWeek)) {
+  if (["1", "2", "3", "4", "5"].includes(requestedWeek)) {
     $("#weekFilter").value = requestedWeek;
     return;
   }
@@ -98,7 +93,7 @@ async function loadCurrentWeek() {
 
   const data = await response.json();
   const currentWeek = Number(data.settings?.currentWeek || 1);
-  if (currentWeek >= 1 && currentWeek <= 10) {
+  if (currentWeek >= 1 && currentWeek <= 5) {
     $("#weekFilter").value = String(currentWeek);
   }
 }

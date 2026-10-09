@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블9기 미션</title>
-    <meta name="description" content="초강스블로그 9기 미션 제출 페이지입니다." />
+    <title>초블10기 미션</title>
+    <meta name="description" content="초강스블로그 10기 미션 제출 페이지입니다." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="초블9기 미션" />
-    <meta property="og:description" content="초강스블로그 9기 미션 제출 페이지입니다." />
+    <meta property="og:title" content="초블10기 미션" />
+    <meta property="og:description" content="초강스블로그 10기 미션 제출 페이지입니다." />
     <meta property="og:url" content="https://renderup-web.onrender.com/" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -17,9 +17,9 @@
     <main class="app-shell">
       <nav class="topbar">
         <a class="brand" href="/">
-          <span class="brand-mark">초블9</span>
+          <span class="brand-mark">초블10</span>
           <span>
-            <strong>초블9기</strong>
+            <strong>초블10기</strong>
             <small>Mission Control</small>
           </span>
         </a>
@@ -31,8 +31,8 @@
 
       <section id="loginView" class="login-grid">
         <div class="login-copy">
-          <p class="eyebrow">초강스블로그 9기</p>
-          <h1>초블9기<br class="desktop-title-break" /> 미션 체크인</h1>
+          <p class="eyebrow">초강스블로그 10기</p>
+          <h1>초블10기<br class="desktop-title-break" /> 미션 체크인</h1>
           <p class="lead">이름을 고르고 핸드폰 번호로 입장하세요.</p>
           <div class="signal-strip" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span>
@@ -41,8 +41,8 @@
 
         <form id="loginForm" class="panel login-panel">
           <div class="segmented" role="tablist" aria-label="반 선택">
-            <button type="button" class="segment active" data-group="weekly1">주1회반</button>
-            <button type="button" class="segment" data-group="weekly2">주2회반</button>
+            <button type="button" class="segment active" data-group="junior">주니어 팀</button>
+            <button type="button" class="segment" data-group="senior">시니어 팀</button>
           </div>
 
           <label class="field">
@@ -52,7 +52,7 @@
 
           <div class="name-zone">
             <div class="section-heading">
-              <h2 id="rosterTitle">주1회반 명단</h2>
+              <h2 id="rosterTitle">주니어 팀 명단</h2>
               <span id="selectedNameBadge">이름 선택</span>
             </div>
             <div id="rosterList" class="roster-list" aria-label="이름 목록"></div>
@@ -91,7 +91,16 @@
                 <p>일요일 00시~24시 글 작성</p>
               </div>
             </div>
-            <div class="notice-line">적당한 길이의 본문 글 + 그림8장이상 + 지도</div>
+            <div id="mission1Summary" class="notice-line">성의 있는 본문 글 + 그림 8장 이상 + 지도 위치</div>
+            <div id="juniorMissionGuide" class="mission-guide hidden">
+              <strong>주니어 미션 작성 가이드</strong>
+              <ul>
+                <li>본문은 읽는 사람이 충분히 이해할 수 있도록 성의 있게 길게 작성해 주세요.</li>
+                <li>그림이나 사진을 8장 이상 넣어 주세요.</li>
+                <li>네이버 지도 위치를 꼭 추가해 주세요.</li>
+                <li>AI로 초안을 썼다면 메모장에 붙여넣은 뒤 자신의 말투와 경험을 더해 가공해 주세요.</li>
+              </ul>
+            </div>
             <label class="field">
               <span>블로그 주소</span>
               <input id="blogUrlInput" type="url" placeholder="https://blog.naver.com/..." />
@@ -123,7 +132,7 @@
 
     <div id="celebrationOverlay" class="celebration-overlay" aria-hidden="true">
       <div class="celebration-copy">
-        <span>CHOBLOG 9</span>
+        <span>CHOBLOG 10</span>
         <strong id="celebrationTitle">미션 성공!!</strong>
         <small>MISSION COMPLETE</small>
       </div>

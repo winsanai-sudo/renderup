@@ -18,3 +18,5 @@ services:
         sync: false
       - key: SUPABASE_TABLE
         value: app_state
+      - key: STATE_KEY
+        value: choblog10

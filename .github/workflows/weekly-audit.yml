@@ -1,0 +1,17 @@
+name: Weekly mission audit wake-up
+
+on:
+  schedule:
+    # Monday 15:01 UTC is Tuesday 00:01 in Asia/Seoul.
+    - cron: "1 15 * * 1"
+  workflow_dispatch:
+
+jobs:
+  wake-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the Render service for the weekly audit
+        run: |
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --max-time 180 \
+            https://renderup-web.onrender.com/api/health

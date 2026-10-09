@@ -1,15 +1,18 @@
-# 초블9기 미션 웹사이트
+# 초블10기 미션 웹사이트
 
-초강스블로그 9기 미션 제출/관리용 웹앱입니다.
+초강스블로그 10기 미션 제출/관리용 웹앱입니다.
 
 ## 주요 기능
 
-- 주1회반/주2회반 명단 선택 후 이름과 핸드폰 번호로 접속
-- 주1회반은 1~5주차, 주2회반은 1~10회차별 미션1, 미션2 제출
+- 주니어 팀/시니어 팀 명단 선택 후 이름과 핸드폰 번호로 접속
+- 두 팀 모두 매주 일요일, 5주 동안 미션1과 미션2 제출
+- 주니어 팀에는 글 길이, 이미지, 지도, AI 초안 가공 안내 제공
 - 미션1: 블로그 주소 제출
 - 미션2: 체류1분이상, 좋아요, 서이추, 비밀댓글 체크
 - 같은 회차 같은 미션 중복 제출 방지
-- 마스터 대시보드에서 전체 제출, 성공 횟수, 지각 제출 확인
+- 마스터 대시보드에서 전체 제출, 성공 횟수, 지각·미제출 대상 확인
+- 매주 화요일 00:01 이후 늦은 블로그의 실제 게시일 자동 확인
+- GitHub Actions가 화요일 00:01(한국시간)에 Render 서비스를 깨워 자동 점검 실행
 - 로그인한 반의 블로그 방문 링크만 볼 수 있는 페이지 제공
 - 마스터 초기화 버튼으로 새 기수/새 주기 시작
 
@@ -49,7 +52,7 @@ Render에서 Blueprint로 연결하면 다음 값이 사용됩니다.
 - Build Command: `npm install`
 - Start Command: `npm start`
 - Health Check: `/api/health`
-- 데이터 저장: Supabase 환경변수가 있으면 Supabase, 없으면 로컬 `data/db.json`
+- 데이터 저장: Supabase 환경변수가 있으면 Supabase, 없으면 로컬 `data/choblog10.json`
 
 `MASTER_CODE`는 Render Dashboard에서 직접 입력하도록 `sync: false`로 설정했습니다.
 
@@ -65,6 +68,7 @@ Render Dashboard의 Environment에 아래 값을 추가합니다.
 SUPABASE_URL=https://프로젝트아이디.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=서비스롤키
 SUPABASE_TABLE=app_state
+STATE_KEY=choblog10
 ```
 
 `/api/health` 응답의 `storage` 값이 `supabase`이면 Supabase 저장이 활성화된 상태입니다.
@@ -81,4 +85,4 @@ Cloudflare 임시 터널로 공유하려면 PowerShell에서 실행합니다.
 
 ## 저장 데이터
 
-Supabase 환경변수가 없을 때만 제출 데이터가 `data/db.json`에 저장됩니다. GitHub에는 실제 제출 데이터, 마스터 코드, 임시 공개 URL, 터널 실행 파일이 올라가지 않도록 `.gitignore`에 제외했습니다.
+10기 데이터는 Supabase의 `choblog10` 키에 별도로 저장되어 이전 기수 데이터와 섞이지 않습니다. Supabase 환경변수가 없을 때만 제출 데이터가 `data/choblog10.json`에 저장됩니다. GitHub에는 실제 제출 데이터, 마스터 코드, 임시 공개 URL, 터널 실행 파일이 올라가지 않도록 `.gitignore`에 제외했습니다.

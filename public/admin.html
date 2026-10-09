@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블9기 마스터</title>
+    <title>초블10기 마스터</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-page="admin">
     <main class="app-shell wide-shell">
       <nav class="topbar">
         <a class="brand" href="/">
-          <span class="brand-mark">초블9</span>
+          <span class="brand-mark">초블10</span>
           <span>
-            <strong>초블9기</strong>
+            <strong>초블10기</strong>
             <small>Master Deck</small>
           </span>
         </a>
@@ -42,33 +42,58 @@
         <div class="section-heading hero-heading">
           <div>
             <p class="eyebrow">Master Dashboard</p>
-            <h1>초블9기 전체 데이터</h1>
+            <h1>초블10기 전체 데이터</h1>
           </div>
           <button id="adminLogoutBtn" class="ghost-btn" type="button">마스터 로그아웃</button>
         </div>
 
         <div class="control-band">
-          <label class="field compact-field">
-            <span>현재 운영 회차</span>
-            <select id="currentWeekSelect">
-              <option value="1">1주차</option>
-              <option value="2">2주차</option>
-              <option value="3">3주차</option>
-              <option value="4">4주차</option>
-              <option value="5">5주차</option>
-              <option value="6">6회차</option>
-              <option value="7">7회차</option>
-              <option value="8">8회차</option>
-              <option value="9">9회차</option>
-              <option value="10">10회차</option>
-            </select>
-          </label>
-          <button id="saveWeekBtn" class="primary-btn small-btn" type="button">저장</button>
+          <div class="auto-week-status">
+            <span>자동 운영 주차</span>
+            <strong id="currentWeekLabel">1주차</strong>
+            <small>매주 화요일 00:01 마감 점검</small>
+          </div>
+          <button id="refreshAuditBtn" class="ghost-btn small-btn" type="button">점검 새로고침</button>
           <button id="copyLinksBtn" class="ghost-btn small-btn" type="button">방문 링크 복사</button>
           <button id="resetBtn" class="danger-btn small-btn" type="button">초기화</button>
         </div>
 
         <div id="kpiGrid" class="kpi-grid"></div>
+
+        <section class="admin-section review-section">
+          <div class="section-heading review-heading">
+            <div>
+              <p class="eyebrow">Weekly Review</p>
+              <h2>미션 보완 대상</h2>
+            </div>
+            <label class="field compact-field week-filter">
+              <span>마감 주차</span>
+              <select id="reviewWeekSelect">
+                <option value="1">1주차</option>
+                <option value="2">2주차</option>
+                <option value="3">3주차</option>
+                <option value="4">4주차</option>
+                <option value="5">5주차</option>
+              </select>
+            </label>
+          </div>
+          <div id="auditStatus" class="audit-status"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>우선</th>
+                  <th>팀</th>
+                  <th>이름</th>
+                  <th>미션1</th>
+                  <th>미션2</th>
+                  <th>블로그</th>
+                </tr>
+              </thead>
+              <tbody id="failuresTable"></tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="admin-section">
           <div class="section-heading">
@@ -88,11 +113,6 @@
                   <th>3주차</th>
                   <th>4주차</th>
                   <th>5주차</th>
-                  <th>6회차</th>
-                  <th>7회차</th>
-                  <th>8회차</th>
-                  <th>9회차</th>
-                  <th>10회차</th>
                 </tr>
               </thead>
               <tbody id="membersTable"></tbody>

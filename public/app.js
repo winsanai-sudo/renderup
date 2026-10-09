@@ -1,27 +1,22 @@
 const state = {
-  roster: { weekly1: [], weekly2: [] },
+  roster: { junior: [], senior: [] },
   groupSessions: {
-    weekly1: [
+    junior: [
       "1주차 · 일요일",
       "2주차 · 일요일",
       "3주차 · 일요일",
       "4주차 · 일요일",
       "5주차 · 일요일"
     ].map((label, index) => ({ week: index + 1, label })),
-    weekly2: [
-      "1회차 · 수요일",
-      "2회차 · 일요일",
-      "3회차 · 수요일",
-      "4회차 · 일요일",
-      "5회차 · 수요일",
-      "6회차 · 일요일",
-      "7회차 · 수요일",
-      "8회차 · 일요일",
-      "9회차 · 수요일",
-      "10회차 · 일요일"
+    senior: [
+      "1주차 · 일요일",
+      "2주차 · 일요일",
+      "3주차 · 일요일",
+      "4주차 · 일요일",
+      "5주차 · 일요일"
     ].map((label, index) => ({ week: index + 1, label }))
   },
-  group: "weekly1",
+  group: "junior",
   selectedName: "",
   member: null,
   submissions: [],
@@ -31,24 +26,12 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-const WEEKLY1_SCHEDULE = [
-  { week: 1, date: "2026-08-23" },
-  { week: 2, date: "2026-08-30" },
-  { week: 3, date: "2026-09-06" },
-  { week: 4, date: "2026-09-13" },
-  { week: 5, date: "2026-09-20" }
-];
-const WEEKLY2_SCHEDULE = [
-  { week: 1, date: "2026-08-19" },
-  { week: 2, date: "2026-08-23" },
-  { week: 3, date: "2026-08-26" },
-  { week: 4, date: "2026-08-30" },
-  { week: 5, date: "2026-09-02" },
-  { week: 6, date: "2026-09-06" },
-  { week: 7, date: "2026-09-09" },
-  { week: 8, date: "2026-09-13" },
-  { week: 9, date: "2026-09-16" },
-  { week: 10, date: "2026-09-20" }
+const SUNDAY_SCHEDULE = [
+  { week: 1, date: "2026-10-11" },
+  { week: 2, date: "2026-10-18" },
+  { week: 3, date: "2026-10-25" },
+  { week: 4, date: "2026-11-01" },
+  { week: 5, date: "2026-11-08" }
 ];
 
 const loginView = $("#loginView");
@@ -61,11 +44,11 @@ const missionMessage = $("#missionMessage");
 const toast = $("#toast");
 
 function groupLabel(group) {
-  return group === "weekly2" ? "주2회반" : "주1회반";
+  return group === "senior" ? "시니어 팀" : "주니어 팀";
 }
 
 function sessionsFor(group) {
-  return state.groupSessions[group] || state.groupSessions.weekly1;
+  return state.groupSessions[group] || state.groupSessions.junior;
 }
 
 function sessionLabel(group, week) {
@@ -94,7 +77,7 @@ function scheduledWeekFor(schedule, today) {
 
 function defaultWeekFor(group) {
   const sessions = sessionsFor(group);
-  const schedule = group === "weekly2" ? WEEKLY2_SCHEDULE : WEEKLY1_SCHEDULE;
+  const schedule = SUNDAY_SCHEDULE;
   if (schedule.length) {
     const today = todayKstDateString();
     return scheduledWeekFor(schedule, today) || sessions[0].week;
@@ -192,6 +175,12 @@ function renderMissionForms() {
   const blogUrlInput = $("#blogUrlInput");
   const mission1Button = $("#mission1Button");
   const mission2Button = $("#mission2Button");
+  const isJunior = state.member.group === "junior";
+
+  $("#juniorMissionGuide").classList.toggle("hidden", !isJunior);
+  $("#mission1Summary").textContent = isJunior
+    ? "주니어는 작성 가이드를 모두 확인해 주세요."
+    : "성의 있는 본문 글 + 그림 8장 이상 + 지도 위치";
 
   blogUrlInput.value = m1?.url || "";
   blogUrlInput.disabled = Boolean(m1);
@@ -218,7 +207,7 @@ function enterMissionView(payload) {
   state.submissions = payload.submissions || [];
   state.settings = payload.settings || state.settings;
   state.selectedWeek = defaultWeekFor(state.member.group);
-  localStorage.setItem("choblog-member-id", state.member.id);
+  localStorage.setItem("choblog10-member-id", state.member.id);
   loginView.classList.add("hidden");
   missionView.classList.remove("hidden");
   window.scrollTo(0, 0);
@@ -234,13 +223,13 @@ async function loadRoster() {
 }
 
 async function restoreLogin() {
-  const memberId = localStorage.getItem("choblog-member-id");
+  const memberId = localStorage.getItem("choblog10-member-id");
   if (!memberId) return;
   try {
     const data = await api(`/api/me?memberId=${encodeURIComponent(memberId)}`);
     enterMissionView(data);
   } catch {
-    localStorage.removeItem("choblog-member-id");
+    localStorage.removeItem("choblog10-member-id");
   }
 }
 
@@ -503,7 +492,7 @@ $("#mission2Form").addEventListener("submit", (event) => {
 });
 
 $("#logoutBtn").addEventListener("click", () => {
-  localStorage.removeItem("choblog-member-id");
+  localStorage.removeItem("choblog10-member-id");
   state.member = null;
   state.submissions = [];
   missionView.classList.add("hidden");
