@@ -5,7 +5,12 @@ const crypto = require("crypto");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
-const MASTER_CODE = process.env.MASTER_CODE || "cho7-master";
+const configuredMasterCode = process.env.MASTER_CODE || "cho10-master";
+const MASTER_CODE = configuredMasterCode
+  .replace(/choblog([\s_-]?)9(?=\D|$)/gi, (_, separator) => `choblog${separator}10`)
+  .replace(/chobl([\s_-]?)9(?=\D|$)/gi, (_, separator) => `chobl${separator}10`)
+  .replace(/cho([\s_-]?)9(?=\D|$)/gi, (_, separator) => `cho${separator}10`)
+  .replace(/초블([\s_-]?)9(?=\D|$)/g, (_, separator) => `초블${separator}10`);
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, "public");
 const configuredDataDir = process.env.DATA_DIR;
@@ -890,7 +895,7 @@ ensureDb()
     server.listen(PORT, HOST, () => {
       console.log(`초블10기 미션 웹사이트: http://${HOST}:${PORT}`);
       console.log(`저장소: ${USE_SUPABASE ? "Supabase" : "local file"}`);
-      console.log(`마스터 코드: ${MASTER_CODE}`);
+      console.log("마스터 코드: 환경변수 또는 로컬 보안 파일 사용");
     });
     runDueAudits().catch((error) => console.error("자동 주차 점검 실패:", error.message));
     const auditTimer = setInterval(() => {
