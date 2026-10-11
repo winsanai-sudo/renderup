@@ -78,6 +78,24 @@ function submissionWeekLabel(item) {
   return sessionsFor(item.group).find((session) => session.week === item.week)?.label || `${item.week}주차`;
 }
 
+function latestSubmissionsOnly(items) {
+  const latestByMission = new Map();
+  items.forEach((item) => {
+    const key = `${item.group}|${item.name}|${item.week}|${item.mission}`;
+    const current = latestByMission.get(key);
+    if (!current || new Date(item.submittedAt) > new Date(current.submittedAt)) {
+      latestByMission.set(key, item);
+    }
+  });
+  return [...latestByMission.values()];
+}
+
+function setSubmissions(items) {
+  state.submissions = latestSubmissionsOnly(
+    (items || []).filter((item) => item.mission !== "examBlog")
+  );
+}
+
 function deadlineForWeek(week) {
   const missionDate = missionDates[week - 1];
   if (!missionDate) return null;
@@ -107,7 +125,7 @@ function isLate(item) {
 function submissionsFor(group, name, week) {
   return state.submissions
     .filter((item) => item.group === group && item.name === name && item.week === week)
-    .sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+    .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 }
 
 function submissionFor(group, name, week, mission) {
@@ -312,7 +330,7 @@ async function loadAdmin() {
   state.roster = data.roster || state.roster;
   state.audits = data.audits || {};
   state.members = data.members || [];
-  state.submissions = (data.submissions || []).filter((item) => item.mission !== "examBlog");
+  setSubmissions(data.submissions);
   state.reviewWeek = [...allWeeks].reverse().find(isClosedWeek) || 1;
   $("#adminLogin").classList.add("hidden");
   $("#adminView").classList.remove("hidden");
@@ -341,7 +359,7 @@ $("#refreshAuditBtn").addEventListener("click", async () => {
     const data = await api("/api/admin/audit", { method: "POST", body: "{}" });
     state.settings = data.settings || state.settings;
     state.audits = data.audits || state.audits;
-    state.submissions = data.submissions || state.submissions;
+    setSubmissions(data.submissions || state.submissions);
     render();
     showToast(data.message);
   } catch (error) {
