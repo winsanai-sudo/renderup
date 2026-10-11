@@ -2,8 +2,8 @@ name: Weekly mission audit wake-up
 
 on:
   schedule:
-    # Monday 15:01 UTC is Tuesday 00:01 in Asia/Seoul.
-    - cron: "1 15 * * 1"
+    # Monday 15:00 UTC is Tuesday 00:00 in Asia/Seoul, immediately after cutoff.
+    - cron: "0 15 * * 1"
   workflow_dispatch:
 
 jobs:

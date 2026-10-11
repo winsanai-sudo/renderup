@@ -399,7 +399,7 @@ function missionDateFor(group, week) {
 
 function missionDeadlineAt(group, week) {
   const missionDate = missionDateFor(group, week);
-  return missionDate ? new Date(`${addDays(missionDate, 2)}T00:01:00+09:00`) : null;
+  return missionDate ? new Date(`${addDays(missionDate, 1)}T23:59:59+09:00`) : null;
 }
 
 function extractNaverPublishedDate(html) {

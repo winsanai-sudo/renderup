@@ -81,7 +81,7 @@ function submissionWeekLabel(item) {
 function deadlineForWeek(week) {
   const missionDate = missionDates[week - 1];
   if (!missionDate) return null;
-  return new Date(new Date(`${missionDate}T00:01:00+09:00`).getTime() + 2 * 24 * 60 * 60 * 1000);
+  return new Date(new Date(`${missionDate}T23:59:59+09:00`).getTime() + 24 * 60 * 60 * 1000);
 }
 
 function isClosedWeek(week) {
@@ -115,8 +115,8 @@ function submissionFor(group, name, week, mission) {
 }
 
 function expectedMembers() {
-  return Object.entries(state.roster).flatMap(([group, names]) =>
-    names.map((name) => ({
+  return ["senior", "junior"].flatMap((group) =>
+    (state.roster[group] || []).map((name) => ({
       group,
       name,
       member: state.members.find((item) => item.group === group && item.name === name) || null
@@ -126,6 +126,7 @@ function expectedMembers() {
 
 function failureRows(week) {
   if (!isClosedWeek(week)) return [];
+  const groupOrder = { senior: 0, junior: 1 };
   return expectedMembers()
     .map(({ group, name }) => {
       const mission1 = submissionFor(group, name, week, "mission1");
@@ -135,7 +136,7 @@ function failureRows(week) {
       return { group, name, mission1, mission2, complete, hasLate };
     })
     .filter((item) => !item.complete)
-    .sort((a, b) => Number(b.hasLate) - Number(a.hasLate) || a.group.localeCompare(b.group) || a.name.localeCompare(b.name, "ko"));
+    .sort((a, b) => groupOrder[a.group] - groupOrder[b.group] || Number(b.hasLate) - Number(a.hasLate) || a.name.localeCompare(b.name, "ko"));
 }
 
 function missionStatus(item, mission) {
@@ -200,25 +201,42 @@ function renderFailures() {
     $("#auditStatus").textContent = "마감 점검을 준비하고 있습니다.";
   }
 
-  $("#failuresTable").innerHTML = rows.length
-    ? rows
-        .map((item) => {
-          const blog = item.mission1?.url
-            ? `<a class="content-link" href="${escapeHtml(item.mission1.url)}" target="_blank" rel="noopener">글 확인</a>`
-            : "-";
-          return `
-            <tr class="${item.hasLate ? "late-row" : ""}">
-              <td><span class="status-chip ${item.hasLate ? "late" : "pending"}">${item.hasLate ? "지각 우선" : "미제출"}</span></td>
-              <td>${groupLabel(item.group)}</td>
-              <td><strong>${escapeHtml(item.name)}</strong></td>
-              <td>${missionStatus(item.mission1, "mission1")}</td>
-              <td>${missionStatus(item.mission2, "mission2")}</td>
-              <td>${blog}</td>
-            </tr>
-          `;
-        })
-        .join("")
-    : `<tr><td colspan="6">${isClosedWeek(week) ? "두 미션을 모두 완료했습니다." : "마감 후 보완 대상만 표시됩니다."}</td></tr>`;
+  if (!isClosedWeek(week)) {
+    $("#failuresTable").innerHTML = '<tr><td colspan="6">마감 후 시니어 팀과 주니어 팀의 보완 대상이 표시됩니다.</td></tr>';
+    return;
+  }
+
+  $("#failuresTable").innerHTML = ["senior", "junior"]
+    .map((group) => {
+      const items = rows.filter((item) => item.group === group);
+      const groupRows = items.length
+        ? items
+            .map((item) => {
+              const blog = item.mission1?.url
+                ? `<a class="content-link" href="${escapeHtml(item.mission1.url)}" target="_blank" rel="noopener">글 확인</a>`
+                : "-";
+              return `
+                <tr class="${item.hasLate ? "late-row" : ""}">
+                  <td><span class="status-chip ${item.hasLate ? "late" : "pending"}">${item.hasLate ? "지각 우선" : "미제출"}</span></td>
+                  <td>${groupLabel(item.group)}</td>
+                  <td><strong>${escapeHtml(item.name)}</strong></td>
+                  <td>${missionStatus(item.mission1, "mission1")}</td>
+                  <td>${missionStatus(item.mission2, "mission2")}</td>
+                  <td>${blog}</td>
+                </tr>
+              `;
+            })
+            .join("")
+        : '<tr><td colspan="6">보완 대상이 없습니다.</td></tr>';
+
+      return `
+        <tr class="submission-group-row">
+          <td colspan="6"><strong>${groupLabel(group)}</strong><span>${items.length}명</span></td>
+        </tr>
+        ${groupRows}
+      `;
+    })
+    .join("");
 }
 
 function renderMembers() {
@@ -239,7 +257,7 @@ function renderMembers() {
 
 function renderSubmissions() {
   $("#submissionCountBadge").textContent = `${state.submissions.length}건`;
-  const groupOrder = ["junior", "senior"];
+  const groupOrder = ["senior", "junior"];
   const groupedRows = groupOrder
     .map((group) => {
       const items = state.submissions
