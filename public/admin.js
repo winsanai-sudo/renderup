@@ -239,9 +239,15 @@ function renderMembers() {
 
 function renderSubmissions() {
   $("#submissionCountBadge").textContent = `${state.submissions.length}건`;
-  $("#submissionsTable").innerHTML =
-    state.submissions
-      .map((item) => {
+  const groupOrder = ["junior", "senior"];
+  const groupedRows = groupOrder
+    .map((group) => {
+      const items = state.submissions
+        .filter((item) => item.group === group)
+        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      if (!items.length) return "";
+
+      const rows = items.map((item) => {
         const late = isLate(item);
         const recognized = item.mission === "mission1" && item.postDateStatus === "matched" && !isOnTime(item);
         const content = item.mission === "mission1"
@@ -259,8 +265,18 @@ function renderSubmissions() {
             <td>${content}</td>
           </tr>
         `;
-      })
-      .join("") || '<tr><td colspan="8">아직 제출 데이터가 없습니다.</td></tr>';
+      }).join("");
+
+      return `
+        <tr class="submission-group-row">
+          <td colspan="8"><strong>${groupLabel(group)}</strong><span>${items.length}건</span></td>
+        </tr>
+        ${rows}
+      `;
+    })
+    .join("");
+
+  $("#submissionsTable").innerHTML = groupedRows || '<tr><td colspan="8">아직 제출 데이터가 없습니다.</td></tr>';
 }
 
 function render() {
