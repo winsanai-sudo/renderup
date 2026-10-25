@@ -774,6 +774,52 @@ async function handleApi(req, res, reqUrl) {
     return;
   }
 
+  if (req.method === "PATCH" && reqUrl.pathname === "/api/admin/submission") {
+    if (!requireMaster(reqUrl)) {
+      sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
+      return;
+    }
+    const body = await parseBody(req);
+    const id = String(body.id || "");
+    const expectedUrl = normalizeUrl(body.expectedUrl);
+    const url = normalizeUrl(body.url);
+    if (!id || !url) {
+      sendJson(res, 400, { message: "수정할 제출 ID와 블로그 주소가 필요합니다." });
+      return;
+    }
+    try {
+      new URL(url);
+    } catch {
+      sendJson(res, 400, { message: "블로그 주소 형식을 확인해주세요." });
+      return;
+    }
+
+    const { result } = await mutateDb((latest) => {
+      const submission = latest.submissions[id];
+      if (!submission) throw new ApiError(404, "수정할 제출 데이터를 찾지 못했습니다.");
+      if (submission.mission !== "mission1") throw new ApiError(400, "미션1 블로그 주소만 수정할 수 있습니다.");
+      if (expectedUrl && submission.url !== expectedUrl) {
+        throw new ApiError(409, "제출 주소가 이미 변경되어 수정하지 않았습니다.");
+      }
+
+      const previousUrl = submission.url;
+      submission.url = url;
+      submission.updatedAt = new Date().toISOString();
+      submission.updatedBy = "master";
+      delete submission.postDateStatus;
+      delete submission.postPublishedDate;
+      delete submission.postDateCheckedAt;
+      delete submission.postDateError;
+      return { previousUrl, submission: safePublicSubmission(submission) };
+    });
+    sendJson(res, 200, {
+      message: "블로그 주소를 수정했습니다.",
+      previousUrl: result.previousUrl,
+      submission: result.submission
+    });
+    return;
+  }
+
   if (req.method === "PATCH" && reqUrl.pathname === "/api/admin/settings") {
     if (!requireMaster(reqUrl)) {
       sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
