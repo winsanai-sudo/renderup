@@ -60,6 +60,25 @@
 
         <div id="kpiGrid" class="kpi-grid"></div>
 
+        <section class="admin-section settlement-section">
+          <div class="section-heading settlement-heading">
+            <div>
+              <p class="eyebrow">Personal Settlement</p>
+              <h2>개인별 1~5주차 정산</h2>
+            </div>
+            <button id="downloadSettlementBtn" class="ghost-btn small-btn" type="button">전체 정산 CSV</button>
+          </div>
+          <div class="settlement-toolbar">
+            <label class="field settlement-search">
+              <span>선생님 이름 검색</span>
+              <input id="settlementSearchInput" type="search" list="settlementNameList" placeholder="이름을 입력하세요" autocomplete="off" />
+              <datalist id="settlementNameList"></datalist>
+            </label>
+            <p id="settlementCount" class="settlement-count" aria-live="polite"></p>
+          </div>
+          <div id="settlementResults" class="settlement-list"></div>
+        </section>
+
         <section class="admin-section review-section">
           <div class="section-heading review-heading">
             <div>

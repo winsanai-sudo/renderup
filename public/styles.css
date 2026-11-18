@@ -990,6 +990,163 @@ select {
   margin-top: 8px;
 }
 
+.settlement-section {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.settlement-heading {
+  align-items: end;
+}
+
+.settlement-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.settlement-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(94, 231, 255, 0.045);
+}
+
+.settlement-search {
+  width: min(440px, 100%);
+}
+
+.settlement-count {
+  margin: 0 0 13px auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.settlement-list {
+  display: grid;
+  gap: 14px;
+}
+
+.settlement-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.settlement-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+}
+
+.settlement-person {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.settlement-person > span {
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 850;
+}
+
+.settlement-person h3 {
+  margin: 0;
+  font-size: 1.22rem;
+}
+
+.settlement-person small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.settlement-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settlement-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 820;
+}
+
+.settlement-total strong {
+  font-size: 1.05rem;
+}
+
+.settlement-total.success {
+  border-color: rgba(119, 255, 182, 0.34);
+  color: var(--mint);
+  background: rgba(119, 255, 182, 0.07);
+}
+
+.settlement-total.failure {
+  border-color: rgba(255, 66, 104, 0.34);
+  color: #ff8da5;
+  background: rgba(255, 66, 104, 0.07);
+}
+
+.settlement-table {
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.settlement-table table {
+  min-width: 820px;
+}
+
+.settlement-table td {
+  vertical-align: top;
+}
+
+.settlement-failure-row td {
+  background: rgba(255, 66, 104, 0.055);
+}
+
+.settlement-reason {
+  min-width: 330px;
+  max-width: 520px;
+  color: #ffb1c0;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+.settlement-reason.success {
+  color: var(--mint);
+}
+
+.settlement-blog-link {
+  display: block;
+  width: max-content;
+  margin-top: 7px;
+  color: var(--cyan);
+  font-size: 0.76rem;
+  font-weight: 820;
+  text-decoration: none;
+}
+
+.settlement-blog-link:hover {
+  text-decoration: underline;
+}
+
 .review-section {
   border-top: 1px solid var(--line);
   padding-top: 20px;
@@ -1195,7 +1352,8 @@ tr.late-row td {
 
   .topbar,
   .hero-heading,
-  .review-heading {
+  .review-heading,
+  .settlement-heading {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1293,6 +1451,28 @@ tr.late-row td {
   .review-heading .week-filter {
     width: 100%;
     margin-left: 0;
+  }
+
+  .settlement-heading > button {
+    width: 100%;
+  }
+
+  .settlement-toolbar,
+  .settlement-card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settlement-count {
+    margin: 0;
+  }
+
+  .settlement-summary {
+    justify-content: flex-start;
+  }
+
+  .settlement-copy-btn {
+    flex: 1 1 100%;
   }
 
   .roster-list,

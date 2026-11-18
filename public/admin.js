@@ -5,7 +5,8 @@ const state = {
   audits: {},
   members: [],
   submissions: [],
-  reviewWeek: 1
+  reviewWeek: 1,
+  settlementQuery: ""
 };
 
 const groupSessions = {
@@ -191,6 +192,191 @@ function weekCell(group, name, week) {
   return `<span class="week-cell ${cls} ${late ? "late" : ""}">${label}${late ? " · 지각" : ""}</span>`;
 }
 
+function settlementMissionStatus(item, mission) {
+  if (!item) return { label: "미제출", className: "late" };
+  if (isOnTime(item)) return { label: "정상 제출", className: "done" };
+  if (mission === "mission1" && item.postDateStatus === "matched") {
+    return { label: `게시일 인정${item.postPublishedDate ? ` · ${item.postPublishedDate}` : ""}`, className: "win" };
+  }
+  if (mission === "mission1" && item.postDateStatus === "mismatch") {
+    return { label: `게시일 불일치${item.postPublishedDate ? ` · ${item.postPublishedDate}` : ""}`, className: "late" };
+  }
+  if (mission === "mission1" && item.postDateStatus === "unavailable") {
+    return { label: "게시일 확인 불가", className: "late" };
+  }
+  return { label: "마감 후 제출", className: "late" };
+}
+
+function settlementFailureReason(item, mission, week) {
+  if (isAccepted(item, mission)) return "";
+  if (!item) return mission === "mission1" ? "미션1 블로그 주소 미제출" : "미션2 체크 미제출";
+  const timing = `제출 ${fmtDate(item.submittedAt)} / 마감 ${fmtDate(deadlineForWeek(week))}`;
+  if (mission === "mission2") return `미션2 마감 후 제출 (${timing})`;
+  if (item.postDateStatus === "mismatch") {
+    const published = item.postPublishedDate || "확인된 날짜 없음";
+    return `미션1 마감 후 제출 (${timing}) · 실제 게시일 ${published}, 미션일 ${missionDates[week - 1]}과 불일치`;
+  }
+  if (item.postDateStatus === "unavailable") {
+    return `미션1 마감 후 제출 (${timing}) · 블로그 게시일 자동 확인 불가`;
+  }
+  return `미션1 마감 후 제출 (${timing}) · 게시일 인정 기록 없음`;
+}
+
+function settlementWeek(group, name, week) {
+  const mission1 = submissionFor(group, name, week, "mission1");
+  const mission2 = submissionFor(group, name, week, "mission2");
+  const closed = isClosedWeek(week);
+  const success = closed && isAccepted(mission1, "mission1") && isAccepted(mission2, "mission2");
+  const reasons = closed
+    ? [
+        settlementFailureReason(mission1, "mission1", week),
+        settlementFailureReason(mission2, "mission2", week)
+      ].filter(Boolean)
+    : [];
+  const acceptedNotes = [
+    mission1 && !isOnTime(mission1) && mission1.postDateStatus === "matched"
+      ? `미션1 실제 게시일 ${mission1.postPublishedDate || missionDates[week - 1]} 인정`
+      : ""
+  ].filter(Boolean);
+  return {
+    week,
+    closed,
+    success,
+    mission1,
+    mission2,
+    mission1Status: settlementMissionStatus(mission1, "mission1"),
+    mission2Status: settlementMissionStatus(mission2, "mission2"),
+    reason: closed
+      ? (success ? ["두 미션 모두 인정", ...acceptedNotes].join(" · ") : reasons.join(" · "))
+      : "아직 마감되지 않은 주차"
+  };
+}
+
+function settlementFor(group, name) {
+  const weeks = allWeeks.map((week) => settlementWeek(group, name, week));
+  return {
+    group,
+    name,
+    member: state.members.find((item) => item.group === group && item.name === name) || null,
+    weeks,
+    successCount: weeks.filter((item) => item.success).length,
+    failureCount: weeks.filter((item) => item.closed && !item.success).length
+  };
+}
+
+function settlementMissionCell(item, status, includeLink = false) {
+  const link = includeLink && item?.url
+    ? `<a class="settlement-blog-link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">글 열기</a>`
+    : "";
+  return `<span class="status-chip ${status.className}">${escapeHtml(status.label)}</span>${link}`;
+}
+
+function settlementSummaryText(settlement) {
+  const lines = [
+    `초블10기 개인 정산 · ${settlement.name} (${groupLabel(settlement.group)})`,
+    `성공 ${settlement.successCount}주 / 실패 ${settlement.failureCount}주`
+  ];
+  settlement.weeks.forEach((item) => {
+    const result = item.closed ? (item.success ? "성공" : "실패") : "진행 중";
+    lines.push(`${item.week}주차 ${result} · ${item.reason}`);
+  });
+  return lines.join("\n");
+}
+
+function renderSettlements() {
+  const settlements = expectedMembers().map(({ group, name }) => settlementFor(group, name));
+  const query = state.settlementQuery.trim().replaceAll(" ", "").toLocaleLowerCase("ko-KR");
+  const filtered = settlements.filter((item) =>
+    item.name.replaceAll(" ", "").toLocaleLowerCase("ko-KR").includes(query)
+  );
+
+  $("#settlementNameList").innerHTML = [...new Set(settlements.map((item) => item.name))]
+    .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
+  $("#settlementCount").textContent = query
+    ? `전체 ${settlements.length}명 중 ${filtered.length}명 검색`
+    : `전체 ${settlements.length}명`;
+
+  $("#settlementResults").innerHTML = filtered.length
+    ? filtered
+        .map((item) => `
+          <article class="settlement-card">
+            <header class="settlement-card-header">
+              <div class="settlement-person">
+                <span>${groupLabel(item.group)}</span>
+                <h3>${escapeHtml(item.name)}</h3>
+                <small>${escapeHtml(item.member?.phoneMasked || "미접속")}</small>
+              </div>
+              <div class="settlement-summary">
+                <span class="settlement-total success">성공 <strong>${item.successCount}</strong>주</span>
+                <span class="settlement-total failure">실패 <strong>${item.failureCount}</strong>주</span>
+                <button class="ghost-btn small-btn settlement-copy-btn" type="button" data-group="${escapeHtml(item.group)}" data-name="${escapeHtml(item.name)}">개인 정산 복사</button>
+              </div>
+            </header>
+            <div class="table-wrap settlement-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>주차</th>
+                    <th>정산 결과</th>
+                    <th>미션1</th>
+                    <th>미션2</th>
+                    <th>실패 이유 / 확인 내용</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${item.weeks.map((weekItem) => `
+                    <tr class="${weekItem.closed && !weekItem.success ? "settlement-failure-row" : ""}">
+                      <td><strong>${weekItem.week}주차</strong></td>
+                      <td><span class="status-chip ${!weekItem.closed ? "pending" : weekItem.success ? "done" : "late"}">${!weekItem.closed ? "진행 중" : weekItem.success ? "성공" : "실패"}</span></td>
+                      <td>${settlementMissionCell(weekItem.mission1, weekItem.mission1Status, true)}</td>
+                      <td>${settlementMissionCell(weekItem.mission2, weekItem.mission2Status)}</td>
+                      <td class="settlement-reason ${weekItem.success ? "success" : ""}">${escapeHtml(weekItem.reason)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        `)
+        .join("")
+    : '<div class="empty-state">검색한 이름과 일치하는 선생님이 없습니다.</div>';
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function downloadSettlementCsv() {
+  const header = ["팀", "이름", "전화번호", "주차", "정산 결과", "미션1", "미션2", "실패 이유 또는 확인 내용", "블로그 주소", "미션1 제출 시간", "미션2 제출 시간"];
+  const rows = expectedMembers().flatMap(({ group, name }) => {
+    const settlement = settlementFor(group, name);
+    return settlement.weeks.map((item) => [
+      groupLabel(group),
+      name,
+      settlement.member?.phoneMasked || "미접속",
+      `${item.week}주차`,
+      item.closed ? (item.success ? "성공" : "실패") : "진행 중",
+      item.mission1Status.label,
+      item.mission2Status.label,
+      item.reason,
+      item.mission1?.url || "",
+      item.mission1?.submittedAt ? fmtDate(item.mission1.submittedAt) : "",
+      item.mission2?.submittedAt ? fmtDate(item.mission2.submittedAt) : ""
+    ]);
+  });
+  const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "초블10기_개인별_1-5주차_정산.csv";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  showToast("전체 개인 정산 CSV를 내려받았습니다.");
+}
+
 function renderKpis() {
   const latestClosedWeek = [...allWeeks].reverse().find(isClosedWeek) || 1;
   const failures = failureRows(latestClosedWeek);
@@ -319,6 +505,7 @@ function render() {
   $("#currentWeekLabel").textContent = `${state.settings.currentWeek || 1}주차`;
   $("#reviewWeekSelect").value = String(state.reviewWeek);
   renderKpis();
+  renderSettlements();
   renderFailures();
   renderMembers();
   renderSubmissions();
@@ -352,6 +539,26 @@ $("#adminLoginForm").addEventListener("submit", async (event) => {
 $("#reviewWeekSelect").addEventListener("change", () => {
   state.reviewWeek = Number($("#reviewWeekSelect").value);
   renderFailures();
+});
+
+$("#settlementSearchInput").addEventListener("input", (event) => {
+  state.settlementQuery = event.target.value;
+  renderSettlements();
+});
+
+$("#downloadSettlementBtn").addEventListener("click", downloadSettlementCsv);
+
+$("#settlementResults").addEventListener("click", async (event) => {
+  const button = event.target.closest(".settlement-copy-btn");
+  if (!button) return;
+  const settlement = settlementFor(button.dataset.group, button.dataset.name);
+  const summary = settlementSummaryText(settlement);
+  try {
+    await navigator.clipboard.writeText(summary);
+    showToast(`${settlement.name} 정산 내용을 복사했습니다.`);
+  } catch {
+    showToast("정산 내용 복사에 실패했습니다.");
+  }
 });
 
 $("#refreshAuditBtn").addEventListener("click", async () => {
