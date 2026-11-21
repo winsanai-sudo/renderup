@@ -2,6 +2,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const cohort11Config = require("./cohort11.json");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -29,7 +30,6 @@ const DATA_DIR = DATA_DIR_CANDIDATES.find((dir) => {
   }
 }) || path.join(ROOT, "data");
 const STATE_KEY = process.env.STATE_KEY || "choblog10";
-const DB_PATH = path.join(DATA_DIR, `${STATE_KEY}.json`);
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "app_state";
@@ -136,6 +136,28 @@ const ROSTER = {
   ]
 };
 
+const cohort10 = {
+  generation: 10,
+  base: "/",
+  defaultGroup: "junior",
+  roster: ROSTER,
+  labels: GROUP_LABELS,
+  sessions: GROUP_SESSIONS,
+  schedules: GROUP_SCHEDULES,
+  ...createStorage(STATE_KEY)
+};
+
+const cohort11 = {
+  generation: 11,
+  base: "/11/",
+  defaultGroup: "all",
+  roster: { all: cohort11Config.roster },
+  labels: { all: "전체 참가자" },
+  sessions: { all: GROUP_SESSIONS.senior },
+  schedules: { all: cohort11Config.startDate ? GROUP_SESSIONS.senior.map(({ week }) => addDays(cohort11Config.startDate, (week - 1) * 7)) : [] },
+  ...createStorage("choblog11")
+};
+
 function defaultDb() {
   return {
     settings: {
@@ -162,27 +184,27 @@ function normalizeDbShape(db) {
   };
 }
 
-function ensureFileDb() {
+function ensureFileDb(dbPath) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(DB_PATH)) {
-    saveFileDb(defaultDb());
+  if (!fs.existsSync(dbPath)) {
+    saveFileDb(dbPath, defaultDb());
   }
 }
 
-function readFileDb() {
-  ensureFileDb();
+function readFileDb(dbPath) {
+  ensureFileDb(dbPath);
   try {
-    return normalizeDbShape(JSON.parse(fs.readFileSync(DB_PATH, "utf8")));
+    return normalizeDbShape(JSON.parse(fs.readFileSync(dbPath, "utf8")));
   } catch {
     return defaultDb();
   }
 }
 
-function saveFileDb(db) {
+function saveFileDb(dbPath, db) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  const tempPath = `${DB_PATH}.tmp`;
+  const tempPath = `${dbPath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(db, null, 2), "utf8");
-  fs.renameSync(tempPath, DB_PATH);
+  fs.renameSync(tempPath, dbPath);
 }
 
 async function supabaseRequest(pathname, options = {}) {
@@ -204,53 +226,46 @@ async function supabaseRequest(pathname, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-async function readSupabaseDb() {
-  const rows = await supabaseRequest(`${SUPABASE_TABLE}?key=eq.${encodeURIComponent(STATE_KEY)}&select=data&limit=1`, {
+async function readSupabaseDb(key) {
+  const rows = await supabaseRequest(`${SUPABASE_TABLE}?key=eq.${encodeURIComponent(key)}&select=data&limit=1`, {
     method: "GET"
   });
   if (Array.isArray(rows) && rows[0]?.data) {
     return normalizeDbShape(rows[0].data);
   }
-  const db = defaultDb();
-  await saveSupabaseDb(db);
-  return db;
+  return defaultDb();
 }
 
-async function saveSupabaseDb(db) {
+async function saveSupabaseDb(key, db) {
   await supabaseRequest(`${SUPABASE_TABLE}?on_conflict=key`, {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({
-      key: STATE_KEY,
+      key,
       data: db,
       updated_at: new Date().toISOString()
     })
   });
 }
 
-async function readDb() {
-  return USE_SUPABASE ? readSupabaseDb() : readFileDb();
-}
+function createStorage(key) {
+  const dbPath = path.join(DATA_DIR, `${key}.json`);
+  const readDb = async () => USE_SUPABASE ? readSupabaseDb(key) : readFileDb(dbPath);
+  let mutationQueue = Promise.resolve();
 
-async function saveDb(db) {
-  if (USE_SUPABASE) {
-    await saveSupabaseDb(db);
-    return;
+  function mutateDb(mutator) {
+    const operation = mutationQueue.then(async () => {
+      const db = await readDb();
+      const result = await mutator(db);
+      if (USE_SUPABASE) await saveSupabaseDb(key, db);
+      else saveFileDb(dbPath, db);
+      return { db, result };
+    });
+    mutationQueue = operation.catch(() => undefined);
+    return operation;
   }
-  saveFileDb(db);
-}
 
-let dbMutationQueue = Promise.resolve();
-
-function mutateDb(mutator) {
-  const operation = dbMutationQueue.then(async () => {
-    const db = await readDb();
-    const result = await mutator(db);
-    await saveDb(db);
-    return { db, result };
-  });
-  dbMutationQueue = operation.catch(() => undefined);
-  return operation;
+  return { readDb, mutateDb };
 }
 
 class ApiError extends Error {
@@ -258,14 +273,6 @@ class ApiError extends Error {
     super(message);
     this.status = status;
   }
-}
-
-async function ensureDb() {
-  if (USE_SUPABASE) {
-    await readSupabaseDb();
-    return;
-  }
-  ensureFileDb();
 }
 
 function keyedById(items = []) {
@@ -353,8 +360,8 @@ function isWeekComplete(db, memberId, week) {
   return Boolean(mission1 && mission2);
 }
 
-function sessionLabel(group, week) {
-  return GROUP_SESSIONS[group]?.find((item) => item.week === week)?.label || `${week}회차`;
+function sessionLabel(cohort, group, week) {
+  return cohort.sessions[group]?.find((item) => item.week === week)?.label || `${week}회차`;
 }
 
 function todayInKorea() {
@@ -366,8 +373,8 @@ function todayInKorea() {
   }).format(new Date());
 }
 
-function currentSessionWeek(group = "junior") {
-  const schedule = GROUP_SCHEDULES[group] || GROUP_SCHEDULES.junior;
+function currentSessionWeek(cohort, group = cohort.defaultGroup) {
+  const schedule = cohort.schedules[group];
   const today = todayInKorea();
   let activeWeek = 1;
   schedule.forEach((date, index) => {
@@ -376,14 +383,12 @@ function currentSessionWeek(group = "junior") {
   return activeWeek;
 }
 
-function clientSettings(db) {
+function clientSettings(cohort, db) {
   return {
     ...db.settings,
-    currentWeek: currentSessionWeek(),
-    currentWeeks: {
-      junior: currentSessionWeek("junior"),
-      senior: currentSessionWeek("senior")
-    }
+    currentWeek: currentSessionWeek(cohort),
+    currentWeeks: Object.fromEntries(Object.keys(cohort.sessions).map((group) => [group, currentSessionWeek(cohort, group)])),
+    ...(cohort.generation === 11 ? { startDate: cohort.schedules.all[0] || null } : {})
   };
 }
 
@@ -393,12 +398,12 @@ function addDays(dateString, days) {
   return date.toISOString().slice(0, 10);
 }
 
-function missionDateFor(group, week) {
-  return (GROUP_SCHEDULES[group] || GROUP_SCHEDULES.junior)?.[week - 1] || "";
+function missionDateFor(cohort, group, week) {
+  return (cohort.schedules[group] || cohort.schedules[cohort.defaultGroup])?.[week - 1] || "";
 }
 
-function missionDeadlineAt(group, week) {
-  const missionDate = missionDateFor(group, week);
+function missionDeadlineAt(cohort, group, week) {
+  const missionDate = missionDateFor(cohort, group, week);
   return missionDate ? new Date(`${addDays(missionDate, 1)}T23:59:59+09:00`) : null;
 }
 
@@ -453,19 +458,21 @@ async function fetchNaverPublishedDate(url) {
   return extractNaverPublishedDate(html);
 }
 
-let auditRunPromise = null;
-
-async function runDueAudits({ force = false } = {}) {
-  if (auditRunPromise) return auditRunPromise;
-  auditRunPromise = (async () => {
+async function runDueAudits(cohort, { force = false } = {}) {
+  if (cohort.auditRun) return cohort.auditRun;
+  const { defaultGroup, readDb, mutateDb } = cohort;
+  cohort.auditRun = (async () => {
     const now = new Date();
     const snapshot = await readDb();
-    const dueWeeks = GROUP_SESSIONS.junior
+    const dueWeeks = cohort.sessions[defaultGroup]
       .map((session) => session.week)
-      .filter((week) => now >= missionDeadlineAt("junior", week))
+      .filter((week) => {
+        const deadline = missionDeadlineAt(cohort, defaultGroup, week);
+        return deadline && now >= deadline;
+      })
       .filter((week) => {
         if (force || !snapshot.audits?.[week]) return true;
-        const deadline = missionDeadlineAt("junior", week);
+        const deadline = missionDeadlineAt(cohort, defaultGroup, week);
         return Object.values(snapshot.submissions).some(
           (item) =>
             item.mission === "mission1" &&
@@ -479,7 +486,7 @@ async function runDueAudits({ force = false } = {}) {
 
     for (const week of dueWeeks) {
       const results = [];
-      const deadline = missionDeadlineAt("junior", week);
+      const deadline = missionDeadlineAt(cohort, defaultGroup, week);
       const candidates = Object.values(snapshot.submissions).filter(
         (item) =>
           item.mission === "mission1" &&
@@ -497,7 +504,7 @@ async function runDueAudits({ force = false } = {}) {
             id: item.id,
             postPublishedDate,
             postDateStatus: postPublishedDate
-              ? postPublishedDate === missionDateFor(item.group, week)
+              ? postPublishedDate === missionDateFor(cohort, item.group, week)
                 ? "matched"
                 : "mismatch"
               : "unavailable"
@@ -515,7 +522,7 @@ async function runDueAudits({ force = false } = {}) {
         });
         db.audits[week] = {
           week,
-          missionDate: missionDateFor("junior", week),
+          missionDate: missionDateFor(cohort, defaultGroup, week),
           deadlineAt: deadline.toISOString(),
           ranAt: checkedAt,
           checkedBlogCount: results.length,
@@ -529,20 +536,20 @@ async function runDueAudits({ force = false } = {}) {
   })();
 
   try {
-    return await auditRunPromise;
+    return await cohort.auditRun;
   } finally {
-    auditRunPromise = null;
+    cohort.auditRun = null;
   }
 }
 
-function isLateSubmission(item) {
+function isLateSubmission(cohort, item) {
   if (item.postDateStatus === "matched") return false;
-  const deadline = missionDeadlineAt(item.group, item.week);
+  const deadline = missionDeadlineAt(cohort, item.group, item.week);
   if (deadline && item.submittedAt) return new Date(item.submittedAt) > deadline;
   return Number.isInteger(item.week) && item.submittedDuringWeek > item.week;
 }
 
-function safePublicSubmission(item) {
+function safePublicSubmission(cohort, item) {
   return {
     id: item.id,
     memberId: item.memberId,
@@ -558,7 +565,7 @@ function safePublicSubmission(item) {
     postPublishedDate: item.postPublishedDate || "",
     postDateStatus: item.postDateStatus || "",
     postDateCheckedAt: item.postDateCheckedAt || "",
-    late: isLateSubmission(item)
+    late: isLateSubmission(cohort, item)
   };
 }
 
@@ -567,14 +574,41 @@ function requireMaster(reqUrl) {
   return code === MASTER_CODE;
 }
 
-function serveStatic(req, res, pathname) {
+function sessionSignature(member) {
+  return crypto.createHmac("sha256", member.sessionKey).update(member.id).digest("hex");
+}
+
+function setMemberSession(req, res, member) {
+  const value = member ? `${member.id}.${sessionSignature(member)}` : "";
+  const secure = req.socket.encrypted || process.env.RENDER || req.headers["x-forwarded-proto"] === "https";
+  res.setHeader("Set-Cookie", `choblog11_session=${value}; Path=/11/; HttpOnly; SameSite=Lax; Max-Age=${member ? 31536000 : 0}${secure ? "; Secure" : ""}`);
+}
+
+function sessionMember(req, db) {
+  const cookie = (req.headers.cookie || "").match(/(?:^|;\s*)choblog11_session=([a-f0-9]{18})\.([a-f0-9]{64})(?=;|$)/);
+  if (!cookie) return null;
+  const member = db.members[cookie[1]];
+  if (!member?.sessionKey) return null;
+  const valid = crypto.timingSafeEqual(Buffer.from(cookie[2], "hex"), Buffer.from(sessionSignature(member), "hex"));
+  return valid ? member : null;
+}
+
+async function serveStatic(res, pathname, cohort) {
   let relative = pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1));
   if (relative === "admin") relative = "admin.html";
   if (relative === "links") relative = "links.html";
   const filePath = path.resolve(PUBLIC_DIR, relative);
 
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  if (!filePath.startsWith(`${PUBLIC_DIR}${path.sep}`)) {
     send(res, 403, "Forbidden");
+    return;
+  }
+
+  if (["index.html", "admin.html", "links.html"].includes(relative)) {
+    const html = await fs.promises.readFile(filePath, "utf8");
+    send(res, 200, html.replaceAll("{{COHORT}}", cohort.generation).replaceAll("{{BASE}}", cohort.base), {
+      "Content-Type": MIME[".html"]
+    });
     return;
   }
 
@@ -592,29 +626,33 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-async function handleApi(req, res, reqUrl) {
+async function handleApi(req, res, reqUrl, cohort) {
+  const { readDb, mutateDb, roster, labels, sessions, schedules, generation } = cohort;
+  const singleGroup = generation === 11;
+  const settingsFor = (db) => clientSettings(cohort, db);
+  const publicSubmission = (item) => safePublicSubmission(cohort, item);
   if (req.method === "GET" && reqUrl.pathname === "/api/health") {
-    sendJson(res, 200, { ok: true, generation: 10, masterGeneration: 10, storage: USE_SUPABASE ? "supabase" : "file" });
+    sendJson(res, 200, { ok: true, generation, masterGeneration: generation, storage: USE_SUPABASE ? "supabase" : "file" });
     return;
   }
 
   if (req.method === "GET" && reqUrl.pathname === "/api/roster") {
     const db = await readDb();
-    sendJson(res, 200, { roster: ROSTER, groupLabels: GROUP_LABELS, groupSessions: GROUP_SESSIONS, settings: clientSettings(db) });
+    sendJson(res, 200, { roster, groupLabels: labels, groupSessions: sessions, settings: settingsFor(db) });
     return;
   }
 
   if (req.method === "POST" && reqUrl.pathname === "/api/login") {
     const body = await parseBody(req);
-    const group = String(body.group || "");
+    const group = singleGroup ? cohort.defaultGroup : String(body.group || "");
     const name = String(body.name || "").trim();
     const phone = normalizePhone(body.phone);
 
-    if (!Object.keys(ROSTER).includes(group)) {
+    if (!Object.hasOwn(roster, group)) {
       sendJson(res, 400, { message: "주니어 팀 또는 시니어 팀을 선택해주세요." });
       return;
     }
-    if (!ROSTER[group].includes(name)) {
+    if (!roster[group].includes(name)) {
       sendJson(res, 400, { message: "목록에서 이름을 선택해주세요." });
       return;
     }
@@ -636,34 +674,39 @@ async function handleApi(req, res, reqUrl) {
         firstLoginAt: latest.members[id]?.firstLoginAt || now,
         lastLoginAt: now
       };
+      if (singleGroup) latest.members[id].sessionKey ||= crypto.randomBytes(32).toString("hex");
     });
+    const { sessionKey, phone: registeredPhone, ...member } = db.members[id];
+    if (singleGroup) setMemberSession(req, res, db.members[id]);
     sendJson(res, 200, {
-      member: { ...db.members[id], phone: undefined },
-      submissions: getMemberSubmissions(db, id).map(safePublicSubmission),
-      settings: clientSettings(db)
+      member,
+      submissions: getMemberSubmissions(db, id).map(publicSubmission),
+      settings: settingsFor(db)
     });
     return;
   }
 
+  if (singleGroup && req.method === "POST" && reqUrl.pathname === "/api/logout") {
+    setMemberSession(req, res, null);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
   if (req.method === "GET" && reqUrl.pathname === "/api/me") {
-    const memberId = reqUrl.searchParams.get("memberId") || "";
     const db = await readDb();
-    const member = db.members[memberId];
+    const member = singleGroup ? sessionMember(req, db) : db.members[reqUrl.searchParams.get("memberId") || ""];
     if (!member) {
-      sendJson(res, 404, { message: "로그인 정보가 없습니다." });
+      sendJson(res, singleGroup ? 401 : 404, { message: "로그인 정보가 없습니다." });
       return;
     }
-    sendJson(res, 200, {
-      member: { ...member, phone: undefined },
-      submissions: getMemberSubmissions(db, memberId).map(safePublicSubmission),
-      settings: clientSettings(db)
-    });
+    if (singleGroup) setMemberSession(req, res, member);
+    const { sessionKey, phone, ...publicMember } = member;
+    sendJson(res, 200, { member: publicMember, submissions: getMemberSubmissions(db, member.id).map(publicSubmission), settings: settingsFor(db) });
     return;
   }
 
   if (req.method === "POST" && reqUrl.pathname === "/api/submit") {
     const body = await parseBody(req);
-    const memberId = String(body.memberId || "");
     const mission = String(body.mission || "");
     const week = Number(body.week);
     if (!["mission1", "mission2"].includes(mission)) {
@@ -699,16 +742,20 @@ async function handleApi(req, res, reqUrl) {
     }
 
     const { db, result: item } = await mutateDb((latest) => {
-      const member = latest.members[memberId];
+      const member = singleGroup ? sessionMember(req, latest) : latest.members[String(body.memberId || "")];
       if (!member) throw new ApiError(401, "로그인 후 다시 제출해주세요.");
-      const maxWeek = GROUP_SESSIONS[member.group]?.length || 5;
+      const maxWeek = sessions[member.group]?.length || 5;
       if (!Number.isInteger(week) || week < 1 || week > maxWeek) {
-        throw new ApiError(400, `제출할 회차를 선택해주세요. ${GROUP_LABELS[member.group]}은 ${maxWeek}회까지 제출할 수 있습니다.`);
+        throw new ApiError(400, `제출할 회차를 선택해주세요. ${maxWeek}회까지 제출할 수 있습니다.`);
+      }
+      if (singleGroup && !missionDateFor(cohort, member.group, week)) {
+        throw new ApiError(409, "첫 미션 일정이 등록되면 제출할 수 있습니다.");
       }
 
+      const memberId = member.id;
       const id = makeSubmissionId(memberId, week, mission);
       if (latest.submissions[id]) {
-        throw new ApiError(409, `${sessionLabel(member.group, week)} 미션은 이미 제출 하였습니다`);
+        throw new ApiError(409, `${sessionLabel(cohort, member.group, week)} 미션은 이미 제출 하였습니다`);
       }
 
       const submission = {
@@ -720,17 +767,17 @@ async function handleApi(req, res, reqUrl) {
         week,
         mission,
         submittedAt: new Date().toISOString(),
-        submittedDuringWeek: currentSessionWeek(member.group),
+        submittedDuringWeek: currentSessionWeek(cohort, member.group),
         ...missionPayload
       };
       latest.submissions[id] = submission;
       return submission;
     });
     sendJson(res, 200, {
-      message: `${sessionLabel(item.group, week)} 미션 제출 완료`,
-      submission: safePublicSubmission(item),
-      weekComplete: isWeekComplete(db, memberId, week),
-      submissions: getMemberSubmissions(db, memberId).map(safePublicSubmission)
+      message: `${sessionLabel(cohort, item.group, week)} 미션 제출 완료`,
+      submission: publicSubmission(item),
+      weekComplete: isWeekComplete(db, item.memberId, week),
+      submissions: getMemberSubmissions(db, item.memberId).map(publicSubmission)
     });
     return;
   }
@@ -740,16 +787,18 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
       return;
     }
-    await runDueAudits();
+    await runDueAudits(cohort);
     const db = await readDb();
     sendJson(res, 200, {
-      settings: clientSettings(db),
-      roster: ROSTER,
-      groupLabels: GROUP_LABELS,
-      groupSessions: GROUP_SESSIONS,
-      groupSchedules: GROUP_SCHEDULES,
+      settings: settingsFor(db),
+      roster,
+      groupLabels: labels,
+      groupSessions: sessions,
+      groupSchedules: schedules,
       audits: db.audits || {},
-      members: Object.values(db.members).sort((a, b) => a.name.localeCompare(b.name, "ko")),
+      members: Object.values(db.members)
+        .map(({ sessionKey, ...member }) => member)
+        .sort((a, b) => a.name.localeCompare(b.name, "ko")),
       submissions: Object.values(db.submissions)
         .filter((item) => item.mission !== EXAM_MISSION)
         .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
@@ -762,10 +811,10 @@ async function handleApi(req, res, reqUrl) {
       sendJson(res, 401, { message: "마스터 코드가 필요합니다." });
       return;
     }
-    const db = await runDueAudits({ force: true });
+    const db = await runDueAudits(cohort, { force: true });
     sendJson(res, 200, {
       message: "마감된 주차의 블로그 게시일을 다시 확인했습니다.",
-      settings: clientSettings(db),
+      settings: settingsFor(db),
       audits: db.audits || {},
       submissions: Object.values(db.submissions)
         .filter((item) => item.mission !== EXAM_MISSION)
@@ -810,7 +859,7 @@ async function handleApi(req, res, reqUrl) {
       delete submission.postPublishedDate;
       delete submission.postDateCheckedAt;
       delete submission.postDateError;
-      return { previousUrl, submission: safePublicSubmission(submission) };
+      return { previousUrl, submission: publicSubmission(submission) };
     });
     sendJson(res, 200, {
       message: "블로그 주소를 수정했습니다.",
@@ -841,7 +890,7 @@ async function handleApi(req, res, reqUrl) {
         throw new ApiError(409, "제출 주소가 이미 변경되어 삭제하지 않았습니다.");
       }
 
-      const deleted = safePublicSubmission(submission);
+      const deleted = publicSubmission(submission);
       delete latest.submissions[id];
       return deleted;
     });
@@ -867,7 +916,7 @@ async function handleApi(req, res, reqUrl) {
       latest.settings.currentWeek = currentWeek;
       latest.settings.updatedAt = new Date().toISOString();
     });
-    sendJson(res, 200, { settings: clientSettings(db) });
+    sendJson(res, 200, { settings: settingsFor(db) });
     return;
   }
 
@@ -887,7 +936,7 @@ async function handleApi(req, res, reqUrl) {
       Object.keys(latest).forEach((key) => delete latest[key]);
       Object.assign(latest, fresh);
     });
-    sendJson(res, 200, { message: "모든 데이터가 초기화되었습니다.", settings: clientSettings(db) });
+    sendJson(res, 200, { message: "모든 데이터가 초기화되었습니다.", settings: settingsFor(db) });
     return;
   }
 
@@ -928,11 +977,10 @@ async function handleApi(req, res, reqUrl) {
     const db = await readDb();
     const weekParam = reqUrl.searchParams.get("week") || "0";
     const week = Number(weekParam);
-    const memberId = reqUrl.searchParams.get("memberId") || "";
-    const member = db.members[memberId];
+    const member = singleGroup ? sessionMember(req, db) : db.members[reqUrl.searchParams.get("memberId") || ""];
 
     if (!member && !requireMaster(reqUrl)) {
-      sendJson(res, 401, { message: "로그인 후 같은 반 방문 링크를 볼 수 있습니다." });
+      sendJson(res, 401, { message: singleGroup ? "로그인 후 11기 방문 링크를 볼 수 있습니다." : "로그인 후 같은 반 방문 링크를 볼 수 있습니다." });
       return;
     }
 
@@ -945,11 +993,16 @@ async function handleApi(req, res, reqUrl) {
         const bWeek = Number(b.week || 0);
         return aWeek - bWeek || a.name.localeCompare(b.name, "ko");
       })
-      .map(safePublicSubmission);
+      .map(publicSubmission)
+      .map((item) => {
+        if (!singleGroup) return item;
+        const { id, memberId, phoneMasked, ...link } = item;
+        return link;
+      });
     sendJson(res, 200, {
-      settings: clientSettings(db),
+      settings: settingsFor(db),
       memberGroup: member ? member.group : null,
-      groupLabel: member ? GROUP_LABELS[member.group] : "전체",
+      groupLabel: member ? labels[member.group] : "전체",
       submissions
     });
     return;
@@ -961,27 +1014,38 @@ async function handleApi(req, res, reqUrl) {
 const server = http.createServer(async (req, res) => {
   const reqUrl = new URL(req.url, `http://${req.headers.host}`);
   try {
-    if (reqUrl.pathname.startsWith("/api/")) {
-      await handleApi(req, res, reqUrl);
+    if (reqUrl.pathname === "/11") {
+      res.writeHead(308, { Location: `/11/${reqUrl.search}` });
+      res.end();
       return;
     }
-    serveStatic(req, res, reqUrl.pathname);
+    const cohort = reqUrl.pathname.startsWith(cohort11.base) ? cohort11 : cohort10;
+    if (cohort === cohort11) reqUrl.pathname = reqUrl.pathname.slice(cohort.base.length - 1);
+    if (reqUrl.pathname.startsWith("/api/")) {
+      await handleApi(req, res, reqUrl, cohort);
+      return;
+    }
+    await serveStatic(res, reqUrl.pathname, cohort);
   } catch (error) {
     sendJson(res, error.status || 500, { message: error.message || "서버 오류가 발생했습니다." });
   }
 });
 
-ensureDb()
+cohort10.readDb()
   .then(() => {
     server.listen(PORT, HOST, () => {
-      console.log(`초블10기 미션 웹사이트: http://${HOST}:${PORT}`);
+      console.log(`초블 미션 웹사이트: http://${HOST}:${server.address().port}`);
       console.log(`저장소: ${USE_SUPABASE ? "Supabase" : "local file"}`);
       console.log("마스터 코드: 환경변수 또는 로컬 보안 파일 사용");
     });
-    runDueAudits().catch((error) => console.error("자동 주차 점검 실패:", error.message));
-    const auditTimer = setInterval(() => {
-      runDueAudits().catch((error) => console.error("자동 주차 점검 실패:", error.message));
-    }, 60 * 1000);
+    function auditCohorts() {
+      for (const cohort of [cohort10, cohort11]) {
+        if (!cohort.schedules[cohort.defaultGroup].length) continue;
+        runDueAudits(cohort).catch((error) => console.error(`${cohort.generation}기 자동 주차 점검 실패:`, error.message));
+      }
+    }
+    auditCohorts();
+    const auditTimer = setInterval(auditCohorts, 60 * 1000);
     auditTimer.unref();
   })
   .catch((error) => {

@@ -1,5 +1,10 @@
+const { cohort, base } = document.body.dataset;
+const singleGroup = cohort === "11";
+const masterKey = `choblog${cohort}-master-code`;
+const orderedGroups = singleGroup ? ["all"] : ["senior", "junior"];
+
 const state = {
-  code: localStorage.getItem("choblog10-master-code") || "",
+  code: localStorage.getItem(masterKey) || "",
   settings: { currentWeek: 1 },
   roster: { junior: [], senior: [] },
   audits: {},
@@ -17,7 +22,7 @@ const groupSessions = {
     (label, index) => ({ week: index + 1, label })
   )
 };
-const missionDates = ["2026-10-11", "2026-10-18", "2026-10-25", "2026-11-01", "2026-11-08"];
+let missionDates = [];
 const allWeeks = [1, 2, 3, 4, 5];
 
 const $ = (selector) => document.querySelector(selector);
@@ -46,7 +51,7 @@ function showMessage(element, text, type = "") {
 
 async function api(path, options = {}) {
   const joiner = path.includes("?") ? "&" : "?";
-  const pathWithCode = `${path}${joiner}code=${encodeURIComponent(state.code)}`;
+  const pathWithCode = `${base}${path.slice(1)}${joiner}code=${encodeURIComponent(state.code)}`;
   const response = await fetch(pathWithCode, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options
@@ -120,7 +125,8 @@ function isAccepted(item, mission) {
 }
 
 function isLate(item) {
-  return Boolean(item && !isAccepted(item, item.mission) && new Date(item.submittedAt) > deadlineForWeek(item.week));
+  const deadline = item && deadlineForWeek(item.week);
+  return Boolean(deadline && !isAccepted(item, item.mission) && new Date(item.submittedAt) > deadline);
 }
 
 function submissionsFor(group, name, week) {
@@ -134,7 +140,7 @@ function submissionFor(group, name, week, mission) {
 }
 
 function expectedMembers() {
-  return ["senior", "junior"].flatMap((group) =>
+  return orderedGroups.flatMap((group) =>
     (state.roster[group] || []).map((name) => ({
       group,
       name,
@@ -145,7 +151,6 @@ function expectedMembers() {
 
 function failureRows(week) {
   if (!isClosedWeek(week)) return [];
-  const groupOrder = { senior: 0, junior: 1 };
   return expectedMembers()
     .map(({ group, name }) => {
       const mission1 = submissionFor(group, name, week, "mission1");
@@ -155,7 +160,7 @@ function failureRows(week) {
       return { group, name, mission1, mission2, complete, hasLate };
     })
     .filter((item) => !item.complete)
-    .sort((a, b) => groupOrder[a.group] - groupOrder[b.group] || Number(b.hasLate) - Number(a.hasLate) || a.name.localeCompare(b.name, "ko"));
+    .sort((a, b) => orderedGroups.indexOf(a.group) - orderedGroups.indexOf(b.group) || Number(b.hasLate) - Number(a.hasLate) || a.name.localeCompare(b.name, "ko"));
 }
 
 function missionStatus(item, mission) {
@@ -273,7 +278,7 @@ function settlementMissionCell(item, status, includeLink = false) {
 
 function settlementSummaryText(settlement) {
   const lines = [
-    `초블10기 개인 정산 · ${settlement.name} (${groupLabel(settlement.group)})`,
+    `초블${cohort}기 개인 정산 · ${settlement.name}${singleGroup ? "" : ` (${groupLabel(settlement.group)})`}`,
     `성공 ${settlement.successCount}주 / 실패 ${settlement.failureCount}주`
   ];
   settlement.weeks.forEach((item) => {
@@ -303,7 +308,7 @@ function renderSettlements() {
           <article class="settlement-card">
             <header class="settlement-card-header">
               <div class="settlement-person">
-                <span>${groupLabel(item.group)}</span>
+                ${singleGroup ? "" : `<span>${groupLabel(item.group)}</span>`}
                 <h3>${escapeHtml(item.name)}</h3>
                 <small>${escapeHtml(item.member?.phoneMasked || "미접속")}</small>
               </div>
@@ -340,7 +345,7 @@ function renderSettlements() {
           </article>
         `)
         .join("")
-    : '<div class="empty-state">검색한 이름과 일치하는 선생님이 없습니다.</div>';
+    : `<div class="empty-state">${settlements.length ? "검색한 이름과 일치하는 선생님이 없습니다." : "아직 등록된 참가자가 없습니다."}</div>`;
 }
 
 function csvCell(value) {
@@ -348,11 +353,11 @@ function csvCell(value) {
 }
 
 function downloadSettlementCsv() {
-  const header = ["팀", "이름", "전화번호", "주차", "정산 결과", "미션1", "미션2", "실패 이유 또는 확인 내용", "블로그 주소", "미션1 제출 시간", "미션2 제출 시간"];
+  const header = [...(singleGroup ? [] : ["팀"]), "이름", "전화번호", "주차", "정산 결과", "미션1", "미션2", "실패 이유 또는 확인 내용", "블로그 주소", "미션1 제출 시간", "미션2 제출 시간"];
   const rows = expectedMembers().flatMap(({ group, name }) => {
     const settlement = settlementFor(group, name);
     return settlement.weeks.map((item) => [
-      groupLabel(group),
+      ...(singleGroup ? [] : [groupLabel(group)]),
       name,
       settlement.member?.phoneMasked || "미접속",
       `${item.week}주차`,
@@ -369,7 +374,7 @@ function downloadSettlementCsv() {
   const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "초블10기_개인별_1-5주차_정산.csv";
+  anchor.download = `초블${cohort}기_개인별_1-5주차_정산.csv`;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -397,8 +402,12 @@ function renderFailures() {
   const week = state.reviewWeek;
   const rows = failureRows(week);
   const audit = state.audits?.[week];
-  if (!isClosedWeek(week)) {
-    $("#auditStatus").textContent = `${week}주차는 ${fmtDate(deadlineForWeek(week))} 이후에 자동으로 점검됩니다.`;
+  const deadline = deadlineForWeek(week);
+  const columns = singleGroup ? 5 : 6;
+  if (!deadline) {
+    $("#auditStatus").textContent = "첫 미션 일정이 아직 등록되지 않았습니다.";
+  } else if (!isClosedWeek(week)) {
+    $("#auditStatus").textContent = `${week}주차는 ${fmtDate(deadline)} 이후에 자동으로 점검됩니다.`;
   } else if (audit) {
     $("#auditStatus").textContent = `${fmtDate(audit.ranAt)} 점검 · 늦은 블로그 ${audit.checkedBlogCount}건 확인 · 게시일 인정 ${audit.matchedBlogCount}건`;
   } else {
@@ -406,11 +415,11 @@ function renderFailures() {
   }
 
   if (!isClosedWeek(week)) {
-    $("#failuresTable").innerHTML = '<tr><td colspan="6">마감 후 시니어 팀과 주니어 팀의 보완 대상이 표시됩니다.</td></tr>';
+    $("#failuresTable").innerHTML = `<tr><td colspan="${columns}">마감 후 보완 대상이 표시됩니다.</td></tr>`;
     return;
   }
 
-  $("#failuresTable").innerHTML = ["senior", "junior"]
+  $("#failuresTable").innerHTML = orderedGroups
     .map((group) => {
       const items = rows.filter((item) => item.group === group);
       const groupRows = items.length
@@ -422,7 +431,7 @@ function renderFailures() {
               return `
                 <tr class="${item.hasLate ? "late-row" : ""}">
                   <td><span class="status-chip ${item.hasLate ? "late" : "pending"}">${item.hasLate ? "지각 우선" : "미제출"}</span></td>
-                  <td>${groupLabel(item.group)}</td>
+                  ${singleGroup ? "" : `<td>${groupLabel(item.group)}</td>`}
                   <td><strong>${escapeHtml(item.name)}</strong></td>
                   <td>${missionStatus(item.mission1, "mission1")}</td>
                   <td>${missionStatus(item.mission2, "mission2")}</td>
@@ -431,7 +440,9 @@ function renderFailures() {
               `;
             })
             .join("")
-        : '<tr><td colspan="6">보완 대상이 없습니다.</td></tr>';
+        : `<tr><td colspan="${columns}">보완 대상이 없습니다.</td></tr>`;
+
+      if (singleGroup) return groupRows;
 
       return `
         <tr class="submission-group-row">
@@ -449,20 +460,19 @@ function renderMembers() {
   $("#membersTable").innerHTML = members
     .map(({ group, name, member }) => `
       <tr>
-        <td>${groupLabel(group)}</td>
+        ${singleGroup ? "" : `<td>${groupLabel(group)}</td>`}
         <td>${escapeHtml(name)}</td>
         <td>${escapeHtml(member?.phoneMasked || "미접속")}</td>
         <td><strong>${successCount(group, name)}/5</strong></td>
         ${allWeeks.map((week) => `<td>${weekCell(group, name, week)}</td>`).join("")}
       </tr>
     `)
-    .join("");
+    .join("") || `<tr><td colspan="${singleGroup ? 8 : 9}">아직 등록된 참가자가 없습니다.</td></tr>`;
 }
 
 function renderSubmissions() {
   $("#submissionCountBadge").textContent = `${state.submissions.length}건`;
-  const groupOrder = ["senior", "junior"];
-  const groupedRows = groupOrder
+  const groupedRows = orderedGroups
     .map((group) => {
       const items = state.submissions
         .filter((item) => item.group === group)
@@ -480,7 +490,7 @@ function renderSubmissions() {
             <td><span class="status-chip ${late ? "late" : recognized ? "win" : "done"}">${late ? "지각" : recognized ? "게시일 인정" : "정상"}</span></td>
             <td>${submissionWeekLabel(item)}</td>
             <td>${missionLabel(item.mission)}</td>
-            <td>${groupLabel(item.group)}</td>
+            ${singleGroup ? "" : `<td>${groupLabel(item.group)}</td>`}
             <td>${escapeHtml(item.name)}</td>
             <td>${fmtDate(item.submittedAt)}</td>
             <td>${escapeHtml(item.submittedDuringWeek)}주차</td>
@@ -489,6 +499,7 @@ function renderSubmissions() {
         `;
       }).join("");
 
+      if (singleGroup) return rows;
       return `
         <tr class="submission-group-row">
           <td colspan="8"><strong>${groupLabel(group)}</strong><span>${items.length}건</span></td>
@@ -498,11 +509,11 @@ function renderSubmissions() {
     })
     .join("");
 
-  $("#submissionsTable").innerHTML = groupedRows || '<tr><td colspan="8">아직 제출 데이터가 없습니다.</td></tr>';
+  $("#submissionsTable").innerHTML = groupedRows || `<tr><td colspan="${singleGroup ? 7 : 8}">아직 제출 데이터가 없습니다.</td></tr>`;
 }
 
 function render() {
-  $("#currentWeekLabel").textContent = `${state.settings.currentWeek || 1}주차`;
+  $("#currentWeekLabel").textContent = singleGroup && !missionDates.length ? "일정 미정" : `${state.settings.currentWeek || 1}주차`;
   $("#reviewWeekSelect").value = String(state.reviewWeek);
   renderKpis();
   renderSettlements();
@@ -514,6 +525,7 @@ function render() {
 async function loadAdmin() {
   const data = await api("/api/admin");
   state.settings = data.settings;
+  missionDates = (singleGroup ? data.groupSchedules?.all : data.groupSchedules?.junior) || [];
   state.roster = data.roster || state.roster;
   state.audits = data.audits || {};
   state.members = data.members || [];
@@ -529,7 +541,7 @@ $("#adminLoginForm").addEventListener("submit", async (event) => {
   state.code = $("#masterCodeInput").value.trim();
   try {
     await loadAdmin();
-    localStorage.setItem("choblog10-master-code", state.code);
+    localStorage.setItem(masterKey, state.code);
     showToast("마스터 접속 완료");
   } catch (error) {
     showMessage($("#adminLoginMessage"), error.message, "error");
@@ -575,7 +587,7 @@ $("#refreshAuditBtn").addEventListener("click", async () => {
 });
 
 $("#copyLinksBtn").addEventListener("click", async () => {
-  const url = `${window.location.origin}/links.html`;
+  const url = `${window.location.origin}${base}links.html`;
   try {
     await navigator.clipboard.writeText(url);
     showToast("방문 링크 페이지 주소를 복사했습니다.");
@@ -585,7 +597,7 @@ $("#copyLinksBtn").addEventListener("click", async () => {
 });
 
 $("#resetBtn").addEventListener("click", async () => {
-  const confirmText = window.prompt("10기 명단 접속 기록과 제출 데이터를 모두 삭제하려면 RESET을 입력하세요.");
+  const confirmText = window.prompt(`${cohort}기 명단 접속 기록과 제출 데이터를 모두 삭제하려면 RESET을 입력하세요.`);
   if (confirmText !== "RESET") return;
   try {
     await api("/api/admin/reset", { method: "POST", body: JSON.stringify({ confirm: "RESET" }) });
@@ -600,7 +612,7 @@ $("#resetBtn").addEventListener("click", async () => {
 });
 
 $("#adminLogoutBtn").addEventListener("click", () => {
-  localStorage.removeItem("choblog10-master-code");
+  localStorage.removeItem(masterKey);
   state.code = "";
   $("#adminView").classList.add("hidden");
   $("#adminLogin").classList.remove("hidden");
@@ -609,7 +621,7 @@ $("#adminLogoutBtn").addEventListener("click", () => {
 if (state.code) {
   $("#masterCodeInput").value = state.code;
   loadAdmin().catch(() => {
-    localStorage.removeItem("choblog10-master-code");
+    localStorage.removeItem(masterKey);
     state.code = "";
   });
 }

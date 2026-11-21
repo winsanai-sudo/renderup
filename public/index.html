@@ -3,36 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블10기 미션</title>
-    <meta name="description" content="초강스블로그 10기 미션 제출 페이지입니다." />
+    <title>초블{{COHORT}}기 미션</title>
+    <meta name="description" content="초강스블로그 {{COHORT}}기 미션 제출 페이지입니다." />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="초블10기 미션" />
-    <meta property="og:description" content="초강스블로그 10기 미션 제출 페이지입니다." />
-    <meta property="og:url" content="https://renderup-web.onrender.com/" />
+    <meta property="og:title" content="초블{{COHORT}}기 미션" />
+    <meta property="og:description" content="초강스블로그 {{COHORT}}기 미션 제출 페이지입니다." />
+    <meta property="og:url" content="https://renderup-web.onrender.com{{BASE}}" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body data-page="user">
+  <body data-page="user" data-cohort="{{COHORT}}" data-base="{{BASE}}">
     <canvas id="ambientFx" aria-hidden="true"></canvas>
     <canvas id="fireworks" aria-hidden="true"></canvas>
     <main class="app-shell">
       <nav class="topbar">
-        <a class="brand" href="/">
-          <span class="brand-mark">초블10</span>
+        <a class="brand" href="{{BASE}}">
+          <span class="brand-mark">초블{{COHORT}}</span>
           <span>
-            <strong>초블10기</strong>
+            <strong>초블{{COHORT}}기</strong>
             <small>Mission Control</small>
           </span>
         </a>
         <div class="nav-actions">
-          <a class="ghost-link" href="/links.html">방문 링크</a>
-          <a class="ghost-link" href="/admin.html">마스터</a>
+          <a class="ghost-link" href="{{BASE}}links.html">방문 링크</a>
+          <a class="ghost-link" href="{{BASE}}admin.html">마스터</a>
         </div>
       </nav>
 
       <section id="loginView" class="login-grid">
         <div class="login-copy">
-          <p class="eyebrow">초강스블로그 10기</p>
-          <h1>초블10기<br class="desktop-title-break" /> 미션 체크인</h1>
+          <p class="eyebrow">초강스블로그 {{COHORT}}기</p>
+          <h1>초블{{COHORT}}기<br class="desktop-title-break" /> 미션 체크인</h1>
           <p class="lead">이름을 고르고 핸드폰 번호로 입장하세요.</p>
           <div class="signal-strip" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span>
@@ -40,14 +40,14 @@
         </div>
 
         <form id="loginForm" class="panel login-panel">
-          <div class="segmented" role="tablist" aria-label="반 선택">
+          <div class="segmented team-only" role="tablist" aria-label="반 선택">
             <button type="button" class="segment active" data-group="junior">주니어 팀</button>
             <button type="button" class="segment" data-group="senior">시니어 팀</button>
           </div>
 
-          <label class="field">
-            <span>핸드폰 번호</span>
-            <input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel" placeholder="01012345678" required />
+          <label class="field cohort11-only">
+            <span>이름 검색</span>
+            <input id="nameSearch" type="search" autocomplete="off" placeholder="본인 이름을 입력하세요" aria-controls="rosterList" />
           </label>
 
           <div class="name-zone">
@@ -56,7 +56,13 @@
               <span id="selectedNameBadge">이름 선택</span>
             </div>
             <div id="rosterList" class="roster-list" aria-label="이름 목록"></div>
+            <p id="rosterStatus" class="roster-status cohort11-only" role="status"></p>
           </div>
+
+          <label class="field">
+            <span>핸드폰 번호</span>
+            <input id="phoneInput" type="tel" inputmode="numeric" autocomplete="tel" placeholder="01012345678" required />
+          </label>
 
           <button class="primary-btn" type="submit">접속하기</button>
           <p id="loginMessage" class="message" role="status"></p>
@@ -81,6 +87,7 @@
         </div>
 
         <div id="progressGrid" class="progress-grid"></div>
+        <p id="scheduleStatus" class="notice-line hidden" role="status">첫 미션 일정이 등록되면 제출할 수 있습니다.</p>
 
         <div class="mission-grid">
           <form id="mission1Form" class="panel mission-panel">
@@ -132,7 +139,7 @@
 
     <div id="celebrationOverlay" class="celebration-overlay" aria-hidden="true">
       <div class="celebration-copy">
-        <span>CHOBLOG 10</span>
+        <span>CHOBLOG {{COHORT}}</span>
         <strong id="celebrationTitle">미션 성공!!</strong>
         <small>MISSION COMPLETE</small>
       </div>

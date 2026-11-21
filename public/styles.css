@@ -19,6 +19,22 @@
   box-sizing: border-box;
 }
 
+[data-cohort="11"] .team-only,
+[data-cohort="10"] .cohort11-only {
+  display: none;
+}
+
+.roster-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.roster-status:empty,
+[data-cohort="11"] .roster-list:empty {
+  display: none;
+}
+
 html {
   min-height: 100%;
   background: var(--bg);

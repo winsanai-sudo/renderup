@@ -1,3 +1,7 @@
+const singleGroup = document.body.dataset.cohort === "11";
+const base = document.body.dataset.base;
+const memberKey = "choblog10-member-id";
+
 const state = {
   roster: { junior: [], senior: [] },
   groupSessions: {
@@ -16,7 +20,7 @@ const state = {
       "5주차 · 일요일"
     ].map((label, index) => ({ week: index + 1, label }))
   },
-  group: "junior",
+  group: singleGroup ? "all" : "junior",
   selectedName: "",
   member: null,
   submissions: [],
@@ -26,14 +30,6 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-const SUNDAY_SCHEDULE = [
-  { week: 1, date: "2026-10-11" },
-  { week: 2, date: "2026-10-18" },
-  { week: 3, date: "2026-10-25" },
-  { week: 4, date: "2026-11-01" },
-  { week: 5, date: "2026-11-08" }
-];
-
 const loginView = $("#loginView");
 const missionView = $("#missionView");
 const rosterList = $("#rosterList");
@@ -42,6 +38,8 @@ const rosterTitle = $("#rosterTitle");
 const loginMessage = $("#loginMessage");
 const missionMessage = $("#missionMessage");
 const toast = $("#toast");
+const nameSearch = $("#nameSearch");
+const loginButton = $("#loginForm button[type=submit]");
 
 function groupLabel(group) {
   return group === "senior" ? "시니어 팀" : "주니어 팀";
@@ -55,33 +53,8 @@ function sessionLabel(group, week) {
   return sessionsFor(group).find((item) => item.week === week)?.label || `${week}회차`;
 }
 
-function todayKstDateString() {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function scheduledWeekFor(schedule, today) {
-  let activeWeek = schedule[0]?.week;
-  for (const session of schedule) {
-    if (session.date > today) break;
-    activeWeek = session.week;
-  }
-  return activeWeek;
-}
-
 function defaultWeekFor(group) {
   const sessions = sessionsFor(group);
-  const schedule = SUNDAY_SCHEDULE;
-  if (schedule.length) {
-    const today = todayKstDateString();
-    return scheduledWeekFor(schedule, today) || sessions[0].week;
-  }
   const configuredWeek = Number(state.settings.currentWeeks?.[group] || state.settings.currentWeek);
   return sessions.some((item) => item.week === configuredWeek) ? configuredWeek : sessions[0].week;
 }
@@ -111,7 +84,7 @@ function showToast(text) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(`${base}${path.slice(1)}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options
   });
@@ -124,13 +97,44 @@ async function api(path, options = {}) {
   return data;
 }
 
+function searchKey(text) {
+  return text.normalize("NFC").replace(/\s+/g, "").toLocaleLowerCase("ko-KR");
+}
+
+function matchingNames(names) {
+  const query = searchKey(nameSearch.value);
+  return names.filter((name) => searchKey(name).includes(query));
+}
+
 function renderRoster() {
   const names = state.roster[state.group] || [];
-  rosterTitle.textContent = `${groupLabel(state.group)} 명단`;
+  const matches = singleGroup ? matchingNames(names) : names;
+  rosterTitle.textContent = singleGroup ? "참가자 명단" : `${groupLabel(state.group)} 명단`;
   selectedNameBadge.textContent = state.selectedName || "이름 선택";
-  rosterList.innerHTML = names
-    .map((name) => `<button type="button" class="name-btn ${name === state.selectedName ? "selected" : ""}" data-name="${name}">${name}</button>`)
-    .join("");
+  rosterList.replaceChildren(...matches.map((name) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "name-btn";
+    button.classList.toggle("selected", name === state.selectedName);
+    button.setAttribute("aria-pressed", String(name === state.selectedName));
+    button.dataset.name = name;
+    button.textContent = name;
+    return button;
+  }));
+  if (singleGroup) {
+    loginButton.disabled = !state.selectedName;
+    nameSearch.disabled = !names.length;
+    $("#rosterStatus").textContent = !names.length
+      ? "아직 등록된 참가자가 없습니다."
+      : !matches.length ? "검색 결과가 없습니다." : `참가자 ${matches.length}명`;
+  }
+}
+
+function selectName(name) {
+  state.selectedName = name;
+  if (singleGroup) nameSearch.value = name;
+  renderRoster();
+  if (singleGroup) $("#phoneInput").focus();
 }
 
 function renderWeekPicker() {
@@ -176,6 +180,11 @@ function renderMissionForms() {
   const mission1Button = $("#mission1Button");
   const mission2Button = $("#mission2Button");
   const isJunior = state.member.group === "junior";
+  const waitingForSchedule = singleGroup && !state.settings.startDate;
+
+  $("#scheduleStatus").classList.toggle("hidden", !waitingForSchedule);
+  mission1Button.disabled = waitingForSchedule;
+  mission2Button.disabled = waitingForSchedule;
 
   $("#juniorMissionGuide").classList.toggle("hidden", !isJunior);
   $("#mission1Summary").textContent = isJunior
@@ -195,7 +204,8 @@ function renderMissionForms() {
 
 function renderMissionView() {
   if (!state.member) return;
-  $("#memberGroup").textContent = `${groupLabel(state.member.group)} · 현재 인증 ${sessionLabel(state.member.group, state.selectedWeek)}`;
+  const label = singleGroup ? "초블11기" : groupLabel(state.member.group);
+  $("#memberGroup").textContent = `${label} · 현재 인증 ${sessionLabel(state.member.group, state.selectedWeek)}`;
   $("#memberName").textContent = `${state.member.name} 미션 보드`;
   renderWeekPicker();
   renderProgress();
@@ -207,7 +217,7 @@ function enterMissionView(payload) {
   state.submissions = payload.submissions || [];
   state.settings = payload.settings || state.settings;
   state.selectedWeek = defaultWeekFor(state.member.group);
-  localStorage.setItem("choblog10-member-id", state.member.id);
+  if (!singleGroup) localStorage.setItem(memberKey, state.member.id);
   loginView.classList.add("hidden");
   missionView.classList.remove("hidden");
   window.scrollTo(0, 0);
@@ -223,13 +233,16 @@ async function loadRoster() {
 }
 
 async function restoreLogin() {
-  const memberId = localStorage.getItem("choblog10-member-id");
-  if (!memberId) return;
+  const memberId = singleGroup ? null : localStorage.getItem(memberKey);
+  if (!singleGroup && !memberId) return;
   try {
-    const data = await api(`/api/me?memberId=${encodeURIComponent(memberId)}`);
+    const data = await api(singleGroup ? "/api/me" : `/api/me?memberId=${encodeURIComponent(memberId)}`);
     enterMissionView(data);
-  } catch {
-    localStorage.removeItem("choblog10-member-id");
+  } catch (error) {
+    if (!singleGroup && error.status === 404) localStorage.removeItem(memberKey);
+    if (error.status !== 401 && error.status !== 404) {
+      showMessage(loginMessage, "저장된 로그인을 확인하지 못했습니다. 잠시 후 새로고침해 주세요.", "error");
+    }
   }
 }
 
@@ -256,10 +269,7 @@ async function submitMission(mission, payload) {
     renderMissionView();
     if (data.weekComplete) celebrate(state.selectedWeek);
   } catch (error) {
-    const text =
-      error.status === 409
-        ? `${sessionLabel(state.member.group, state.selectedWeek)} 미션은 이미 제출 하였습니다`
-        : error.message;
+    const text = error.message;
     showMessage(missionMessage, text, "error");
     showToast(text);
   }
@@ -447,9 +457,24 @@ $$(".segment").forEach((button) => {
 rosterList.addEventListener("click", (event) => {
   const button = event.target.closest(".name-btn");
   if (!button) return;
-  state.selectedName = button.dataset.name;
-  renderRoster();
+  selectName(button.dataset.name);
 });
+
+if (singleGroup) {
+  loginButton.disabled = true;
+  nameSearch.addEventListener("input", () => {
+    state.selectedName = "";
+    rosterList.scrollTop = 0;
+    renderRoster();
+  });
+  nameSearch.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing) return;
+    event.preventDefault();
+    const matches = matchingNames(state.roster.all || []);
+    const exact = matches.find((name) => searchKey(name) === searchKey(nameSearch.value));
+    if (exact || matches.length === 1) selectName(exact || matches[0]);
+  });
+}
 
 $("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -491,8 +516,21 @@ $("#mission2Form").addEventListener("submit", (event) => {
   submitMission("mission2", { checklist });
 });
 
-$("#logoutBtn").addEventListener("click", () => {
-  localStorage.removeItem("choblog10-member-id");
+$("#logoutBtn").addEventListener("click", async () => {
+  if (singleGroup) {
+    try {
+      await api("/api/logout", { method: "POST" });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+    nameSearch.value = "";
+    $("#phoneInput").value = "";
+    state.selectedName = "";
+    renderRoster();
+  } else {
+    localStorage.removeItem(memberKey);
+  }
   state.member = null;
   state.submissions = [];
   missionView.classList.add("hidden");
@@ -500,6 +538,7 @@ $("#logoutBtn").addEventListener("click", () => {
   showMessage(missionMessage, "");
 });
 
-loadRoster().then(restoreLogin).catch((error) => {
+const startup = singleGroup ? restoreLogin().then(loadRoster) : loadRoster().then(restoreLogin);
+startup.catch((error) => {
   showMessage(loginMessage, error.message, "error");
 });

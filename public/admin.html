@@ -3,22 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블10기 마스터</title>
+    <title>초블{{COHORT}}기 마스터</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body data-page="admin">
+  <body data-page="admin" data-cohort="{{COHORT}}" data-base="{{BASE}}">
     <main class="app-shell wide-shell">
       <nav class="topbar">
-        <a class="brand" href="/">
-          <span class="brand-mark">초블10</span>
+        <a class="brand" href="{{BASE}}">
+          <span class="brand-mark">초블{{COHORT}}</span>
           <span>
-            <strong>초블10기</strong>
+            <strong>초블{{COHORT}}기</strong>
             <small>Master Deck</small>
           </span>
         </a>
         <div class="nav-actions">
-          <a class="ghost-link" href="/">참가자</a>
-          <a class="ghost-link" href="/links.html">방문 링크</a>
+          <a class="ghost-link" href="{{BASE}}">참가자</a>
+          <a class="ghost-link" href="{{BASE}}links.html">방문 링크</a>
         </div>
       </nav>
 
@@ -26,7 +26,7 @@
         <div class="login-copy">
           <p class="eyebrow">마스터 접속</p>
           <h1>전체 미션 현황</h1>
-          <p class="lead">제출 시간, 지각 제출, 반별 성공률을 확인합니다.</p>
+          <p class="lead">제출 시간, 지각 제출, 미션 성공 현황을 확인합니다.</p>
         </div>
         <form id="adminLoginForm" class="panel login-panel">
           <label class="field">
@@ -42,7 +42,7 @@
         <div class="section-heading hero-heading">
           <div>
             <p class="eyebrow">Master Dashboard</p>
-            <h1>초블10기 전체 데이터</h1>
+            <h1>초블{{COHORT}}기 전체 데이터</h1>
           </div>
           <button id="adminLogoutBtn" class="ghost-btn" type="button">마스터 로그아웃</button>
         </div>
@@ -102,7 +102,7 @@
               <thead>
                 <tr>
                   <th>우선</th>
-                  <th>팀</th>
+                  <th class="team-only">팀</th>
                   <th>이름</th>
                   <th>미션1</th>
                   <th>미션2</th>
@@ -116,14 +116,14 @@
 
         <section class="admin-section">
           <div class="section-heading">
-            <h2>참가자별 반별 성공 현황</h2>
+            <h2>참가자별 성공 현황</h2>
             <span id="memberCountBadge"></span>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>그룹</th>
+                  <th class="team-only">그룹</th>
                   <th>이름</th>
                   <th>핸드폰</th>
                   <th>성공</th>
@@ -151,7 +151,7 @@
                   <th>상태</th>
                   <th>회차</th>
                   <th>미션</th>
-                  <th>그룹</th>
+                  <th class="team-only">그룹</th>
                   <th>이름</th>
                   <th>제출 시간</th>
                   <th>제출 당시</th>

@@ -3,29 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>초블10기 방문 링크</title>
+    <title>초블{{COHORT}}기 방문 링크</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body data-page="links">
+  <body data-page="links" data-cohort="{{COHORT}}" data-base="{{BASE}}">
     <main class="app-shell wide-shell">
       <nav class="topbar">
-        <a class="brand" href="/">
-          <span class="brand-mark">초블10</span>
+        <a class="brand" href="{{BASE}}">
+          <span class="brand-mark">초블{{COHORT}}</span>
           <span>
-            <strong>초블10기</strong>
+            <strong>초블{{COHORT}}기</strong>
             <small>Visit Links</small>
           </span>
         </a>
         <div class="nav-actions">
-          <a class="ghost-link" href="/">참가자</a>
-          <a class="ghost-link" href="/admin.html">마스터</a>
+          <a class="ghost-link" href="{{BASE}}">참가자</a>
+          <a class="ghost-link" href="{{BASE}}admin.html">마스터</a>
         </div>
       </nav>
 
       <section class="section-heading hero-heading">
         <div>
-          <p class="eyebrow" id="linksScopeLabel">Class Links</p>
-          <h1>우리 반 방문 링크</h1>
+          <p class="eyebrow" id="linksScopeLabel">초블{{COHORT}}기</p>
+          <h1>블로그 방문 링크</h1>
         </div>
         <label class="field compact-field week-filter">
           <span>주차 선택</span>
